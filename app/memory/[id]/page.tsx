@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import Link from "next/link";
 import Image from "next/image";
@@ -39,10 +39,10 @@ export default function MemoryDetail() {
   const [reactions, setReactions] = useState<Reaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [newComment, setNewComment] = useState<string>('');
-  const [commentAuthor, setCommentAuthor] = useState<string>('');
+  const [newComment, setNewComment] = useState<string>("");
+  const [commentAuthor, setCommentAuthor] = useState<string>("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
-  const [reactAuthorName, setReactAuthorName] = useState<string>('');
+  const [reactAuthorName, setReactAuthorName] = useState<string>("");
   const [showReactInput, setShowReactInput] = useState(false);
 
   useEffect(() => {
@@ -56,16 +56,16 @@ export default function MemoryDetail() {
   const fetchMemory = async () => {
     try {
       const { data, error } = await supabase
-        .from('memories')
-        .select('*')
-        .eq('id', id)
+        .from("memories")
+        .select("*")
+        .eq("id", id)
         .single();
 
       if (error) throw error;
       setMemory(data);
     } catch (err: any) {
-      console.error('Error fetching memory:', err);
-      setError('No se pudo cargar el recuerdo');
+      console.error("Error fetching memory:", err);
+      setError("No se pudo cargar el recuerdo");
     } finally {
       setIsLoading(false);
     }
@@ -74,51 +74,49 @@ export default function MemoryDetail() {
   const fetchComments = async () => {
     try {
       const { data, error } = await supabase
-        .from('comments')
-        .select('*')
-        .eq('memory_id', id)
-        .order('created_at', { ascending: true });
+        .from("comments")
+        .select("*")
+        .eq("memory_id", id)
+        .order("created_at", { ascending: true });
 
       if (error) throw error;
       setComments(data || []);
     } catch (err: any) {
-      console.error('Error fetching comments:', err);
+      console.error("Error fetching comments:", err);
     }
   };
 
   const fetchReactions = async () => {
     try {
       const { data, error } = await supabase
-        .from('reactions')
-        .select('*')
-        .eq('memory_id', id)
-        .order('created_at', { ascending: false });
+        .from("reactions")
+        .select("*")
+        .eq("memory_id", id)
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
       setReactions(data || []);
     } catch (err: any) {
-      console.error('Error fetching reactions:', err);
+      console.error("Error fetching reactions:", err);
     }
   };
 
   const handleAddReaction = async () => {
     if (!reactAuthorName.trim()) {
-      alert('Por favor ingresa tu nombre');
+      alert("Por favor ingresa tu nombre");
       return;
     }
 
     try {
-      const { error } = await supabase
-        .from('reactions')
-        .insert({
-          memory_id: id,
-          author_name: reactAuthorName.trim(),
-        });
+      const { error } = await supabase.from("reactions").insert({
+        memory_id: id,
+        author_name: reactAuthorName.trim(),
+      });
 
       if (error) {
         // Check if already reacted
-        if (error.code === '23505') {
-          alert('Ya has reaccionado a este recuerdo ❤️');
+        if (error.code === "23505") {
+          alert("Ya has reaccionado a este recuerdo ❤️");
           return;
         }
         throw error;
@@ -128,8 +126,8 @@ export default function MemoryDetail() {
       await fetchReactions();
       setShowReactInput(false);
     } catch (err: any) {
-      console.error('Error adding reaction:', err);
-      alert('Error al agregar reacción');
+      console.error("Error adding reaction:", err);
+      alert("Error al agregar reacción");
     }
   };
 
@@ -139,22 +137,20 @@ export default function MemoryDetail() {
     setIsSubmittingComment(true);
 
     try {
-      const { error } = await supabase
-        .from('comments')
-        .insert({
-          memory_id: id,
-          author_name: commentAuthor.trim(),
-          comment_text: newComment.trim(),
-        });
+      const { error } = await supabase.from("comments").insert({
+        memory_id: id,
+        author_name: commentAuthor.trim(),
+        comment_text: newComment.trim(),
+      });
 
       if (error) throw error;
 
       // Refresh comments
       await fetchComments();
-      setNewComment('');
+      setNewComment("");
     } catch (err: any) {
-      console.error('Error adding comment:', err);
-      alert('Error al agregar comentario');
+      console.error("Error adding comment:", err);
+      alert("Error al agregar comentario");
     } finally {
       setIsSubmittingComment(false);
     }
@@ -168,43 +164,45 @@ export default function MemoryDetail() {
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-    if (diffMins < 1) return 'Ahora';
-    if (diffMins < 60) return `Hace ${diffMins} ${diffMins === 1 ? 'minuto' : 'minutos'}`;
-    if (diffHours < 24) return `Hace ${diffHours} ${diffHours === 1 ? 'hora' : 'horas'}`;
-    if (diffDays === 1) return 'Ayer';
+    if (diffMins < 1) return "Ahora";
+    if (diffMins < 60)
+      return `Hace ${diffMins} ${diffMins === 1 ? "minuto" : "minutos"}`;
+    if (diffHours < 24)
+      return `Hace ${diffHours} ${diffHours === 1 ? "hora" : "horas"}`;
+    if (diffDays === 1) return "Ayer";
     if (diffDays < 7) return `Hace ${diffDays} días`;
-    return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+    return date.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
   };
 
   const getCategoryIcon = (category: string) => {
     const icons: Record<string, string> = {
-      childhood: '🧒',
-      family: '👨‍👩‍👧',
-      pets: '🐕',
-      work: '💼',
-      other: '📌',
+      childhood: "🧒",
+      family: "👨‍👩‍👧",
+      pets: "🐕",
+      work: "💼",
+      other: "📌",
     };
-    return icons[category] || '📌';
+    return icons[category] || "📌";
   };
 
   const getCategoryLabel = (category: string) => {
     const labels: Record<string, string> = {
-      childhood: 'Niñez',
-      family: 'Familia',
-      pets: 'Mascotas',
-      work: 'Trabajo',
-      other: 'Otro',
+      childhood: "Niñez",
+      family: "Familia",
+      pets: "Mascotas",
+      work: "Trabajo",
+      other: "Otro",
     };
-    return labels[category] || 'Otro';
+    return labels[category] || "Otro";
   };
 
   const getFormattedDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    return date.toLocaleDateString("es-ES", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
 
@@ -225,7 +223,10 @@ export default function MemoryDetail() {
         <div className="text-center">
           <div className="text-6xl mb-4">😕</div>
           <h2 className="text-text mb-4">Recuerdo no encontrado</h2>
-          <Link href="/" className="text-primary hover:text-accent text-xl underline">
+          <Link
+            href="/"
+            className="text-primary hover:text-accent text-xl underline"
+          >
             ← Volver al inicio
           </Link>
         </div>
@@ -238,7 +239,10 @@ export default function MemoryDetail() {
       {/* Header */}
       <header className="border-b-2 border-border">
         <div className="max-w-6xl mx-auto px-4 py-6">
-          <Link href="/" className="text-accent hover:text-primary text-xl flex items-center gap-2">
+          <Link
+            href="/"
+            className="text-accent hover:text-primary text-xl flex items-center gap-2"
+          >
             ← Volver a Recuerdos
           </Link>
         </div>
@@ -254,41 +258,48 @@ export default function MemoryDetail() {
           </span>
         </div>
 
-        {/* Photo (if exists) */}
-        {memory.photo_url && (
-          <div className="relative w-full aspect-[4/3] rounded-xl overflow-hidden shadow-lg border-2 border-border mb-6">
-            <Image
-              src={memory.photo_url}
-              alt={memory.story.substring(0, 50)}
-              fill
-              className="object-cover"
-              priority
-            />
-          </div>
-        )}
-
-        {/* Story */}
-        <div className="bg-white border-2 border-border rounded-xl p-6 mb-6">
-          <p className="text-text text-xl leading-relaxed whitespace-pre-wrap">
-            {memory.story}
-          </p>
-        </div>
-
-        {/* Author and Date */}
-        <div className="bg-secondary border-2 border-border rounded-xl p-6 mb-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <span className="text-3xl">👤</span>
-              <div>
-                <p className="text-sm text-accent">Compartido por</p>
-                <p className="text-text text-2xl font-semibold">{memory.author_name}</p>
-              </div>
+        {/* Main Memory Card - Photo + Story + Author unified */}
+        <div className="bg-white border-2 border-border rounded-xl overflow-hidden shadow-lg mb-6">
+          {/* Photo (if exists) */}
+          {memory.photo_url && (
+            <div className="relative w-full aspect-[4/3] border-b-2 border-border">
+              <Image
+                src={memory.photo_url}
+                alt={memory.story.substring(0, 50)}
+                fill
+                className="object-contain"
+                priority
+              />
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-3xl">📅</span>
-              <div>
-                <p className="text-sm text-accent">Fecha</p>
-                <p className="text-text text-lg">{getFormattedDate(memory.created_at)}</p>
+          )}
+
+          {/* Story */}
+          <div className="p-6 border-b-2 border-border">
+            <p className="text-text text-xl leading-relaxed whitespace-pre-wrap">
+              {memory.story}
+            </p>
+          </div>
+
+          {/* Author and Date Footer */}
+          <div className="bg-secondary p-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">👤</span>
+                <div>
+                  <p className="text-sm text-accent">Compartido por</p>
+                  <p className="text-text text-2xl font-semibold">
+                    {memory.author_name}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">📅</span>
+                <div>
+                  <p className="text-sm text-accent">Fecha</p>
+                  <p className="text-text text-lg">
+                    {getFormattedDate(memory.created_at)}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -299,7 +310,8 @@ export default function MemoryDetail() {
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-text text-2xl font-semibold flex items-center gap-2">
               <span>❤️</span>
-              {reactions.length} {reactions.length === 1 ? 'Persona' : 'Personas'}
+              {reactions.length}{" "}
+              {reactions.length === 1 ? "Persona" : "Personas"}
             </h3>
             <button
               onClick={() => setShowReactInput(!showReactInput)}
@@ -333,7 +345,7 @@ export default function MemoryDetail() {
                 placeholder="Tu nombre"
                 className="w-full p-4 border-2 border-border rounded-xl focus:border-primary focus:outline-none text-text text-lg mb-4"
                 onKeyPress={(e) => {
-                  if (e.key === 'Enter') handleAddReaction();
+                  if (e.key === "Enter") handleAddReaction();
                 }}
               />
               <button
@@ -341,8 +353,8 @@ export default function MemoryDetail() {
                 disabled={!reactAuthorName.trim()}
                 className={`w-full py-3 px-6 rounded-xl text-lg font-semibold transition-all ${
                   !reactAuthorName.trim()
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-primary text-white hover:bg-accent'
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    : "bg-primary text-white hover:bg-accent"
                 }`}
               >
                 ❤️ Enviar
@@ -366,7 +378,10 @@ export default function MemoryDetail() {
               </p>
             ) : (
               comments.map((comment) => (
-                <div key={comment.id} className="bg-secondary border border-border rounded-lg p-4">
+                <div
+                  key={comment.id}
+                  className="bg-secondary border border-border rounded-lg p-4"
+                >
                   <div className="flex items-start justify-between mb-2">
                     <p className="text-text font-semibold text-lg">
                       👤 {comment.author_name}
@@ -385,7 +400,9 @@ export default function MemoryDetail() {
 
           {/* Add Comment Form */}
           <div className="border-t-2 border-border pt-6">
-            <h4 className="text-text text-xl font-semibold mb-4">Agregar Comentario:</h4>
+            <h4 className="text-text text-xl font-semibold mb-4">
+              Agregar Comentario:
+            </h4>
 
             <input
               type="text"
@@ -405,14 +422,20 @@ export default function MemoryDetail() {
 
             <button
               onClick={handleAddComment}
-              disabled={isSubmittingComment || !newComment.trim() || !commentAuthor.trim()}
+              disabled={
+                isSubmittingComment ||
+                !newComment.trim() ||
+                !commentAuthor.trim()
+              }
               className={`w-full py-4 px-8 rounded-xl text-xl font-semibold transition-all ${
-                isSubmittingComment || !newComment.trim() || !commentAuthor.trim()
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-primary text-white hover:bg-accent hover:scale-105 active:scale-95'
+                isSubmittingComment ||
+                !newComment.trim() ||
+                !commentAuthor.trim()
+                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                  : "bg-primary text-white hover:bg-accent hover:scale-105 active:scale-95"
               }`}
             >
-              {isSubmittingComment ? '⏳ Enviando...' : '💬 Comentar'}
+              {isSubmittingComment ? "⏳ Enviando..." : "💬 Comentar"}
             </button>
           </div>
         </div>

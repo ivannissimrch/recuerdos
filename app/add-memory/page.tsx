@@ -31,43 +31,16 @@ export default function AddMemory() {
     }
   };
 
-  // Writing prompts by category - focused on describing the photo
-  const prompts: Record<Category, string[]> = {
-    childhood: [
-      "Describe qué ves en esta foto y qué recuerdos te trae",
-      "¿Quiénes aparecen en la foto? ¿Dónde estaban?",
-      "¿Qué estaba pasando cuando tomaron esta foto?",
-      "¿Qué recuerdas de ese día o momento?",
-      "¿Por qué es especial esta foto para ti?",
-    ],
-    family: [
-      "Describe quiénes están en la foto y dónde estaban",
-      "¿Qué estaban celebrando o haciendo juntos?",
-      "Cuenta la historia detrás de esta foto",
-      "¿Qué recuerdos te trae ver esta imagen?",
-      "¿Por qué guardaste esta foto?",
-    ],
-    pets: [
-      "Describe a tu mascota en esta foto",
-      "¿Qué estaba haciendo tu mascota aquí?",
-      "¿Dónde y cuándo fue tomada esta foto?",
-      "Cuenta algo divertido sobre este momento",
-      "¿Qué te hace especial esta foto de tu mascota?",
-    ],
-    work: [
-      "Describe qué muestra esta foto de tu trabajo",
-      "¿Dónde y cuándo fue tomada?",
-      "¿Quiénes aparecen contigo en la foto?",
-      "Cuenta la historia detrás de esta imagen",
-      "¿Qué representa este momento para ti?",
-    ],
-    other: [
-      "Describe qué ves en esta foto",
-      "¿Dónde y cuándo fue tomada?",
-      "Cuenta la historia detrás de esta imagen",
-      "¿Qué estaba pasando en ese momento?",
-      "¿Por qué es importante esta foto para ti?",
-    ],
+  // Simple placeholders by category
+  const placeholders: Record<Category, string> = {
+    childhood:
+      "¿Quiénes aparecen en la foto? ¿Dónde estaban? ¿Qué recuerdas de ese día?",
+    family:
+      "¿Quiénes están en la foto? ¿Qué estaban celebrando? Cuenta la historia...",
+    pets: "Describe a tu mascota... ¿Qué estaba haciendo? ¿Por qué es especial este momento?",
+    work: "¿Dónde fue tomada esta foto? ¿Quiénes aparecen? ¿Qué representa para ti?",
+    other:
+      "Describe qué ves en la foto... ¿Cuándo fue? ¿Por qué es especial para ti?",
   };
 
   const handlePromptClick = (prompt: string) => {
@@ -189,7 +162,12 @@ export default function AddMemory() {
         {/* Step 2: Photo Upload (only show after category selected) */}
         {selectedCategory && (
           <section className="mb-8">
-            <h2 className="text-text mb-6">Agregar una Foto:</h2>
+            <div className="flex items-center gap-3 mb-6">
+              <h2 className="text-text">Agregar una Foto:</h2>
+              <span className="text-accent text-lg bg-secondary px-3 py-1 rounded-full">
+                Opcional
+              </span>
+            </div>
 
             {/* Hidden file input */}
             <input
@@ -207,7 +185,7 @@ export default function AddMemory() {
                 className="w-full flex items-center justify-center gap-3 bg-primary text-white py-4 px-6 rounded-xl hover:bg-accent shadow-md hover:scale-105 transition-all text-xl font-semibold"
               >
                 <span className="text-3xl">🖼️</span>
-                <span>Elegir Foto</span>
+                <span>Elegir Foto (Opcional)</span>
               </button>
             </div>
 
@@ -244,12 +222,11 @@ export default function AddMemory() {
           <section className="mb-8">
             <h2 className="text-text mb-6">Escribe tu Historia:</h2>
 
-            {/* Text area */}
             <textarea
               value={story}
               onChange={(e) => setStory(e.target.value)}
-              placeholder="Escribe tu historia aquí..."
-              rows={8}
+              placeholder={placeholders[selectedCategory]}
+              rows={4}
               className="w-full p-4 border-2 border-border rounded-xl focus:border-primary focus:outline-none text-text text-lg resize-none"
               maxLength={1000}
             />
@@ -258,27 +235,6 @@ export default function AddMemory() {
             <div className="text-right mt-2 text-accent">
               {story.length} / 1000 caracteres
             </div>
-
-            {/* Prompts - always visible */}
-            {selectedCategory && (
-              <div className="mt-6 bg-secondary border-2 border-border rounded-xl p-6">
-                <h3 className="text-text font-semibold mb-4 text-xl flex items-center gap-2">
-                  <span className="text-2xl">💡</span>
-                  Ideas para describir tu foto:
-                </h3>
-                <div className="space-y-3">
-                  {prompts[selectedCategory].map((prompt, index) => (
-                    <button
-                      key={index}
-                      onClick={() => handlePromptClick(prompt)}
-                      className="block w-full text-left p-4 bg-white border-2 border-border rounded-lg hover:border-primary hover:shadow-md transition-all text-text text-lg"
-                    >
-                      {prompt}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
           </section>
         )}
 

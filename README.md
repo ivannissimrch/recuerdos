@@ -2,6 +2,8 @@
 
 A simple, senior-friendly family memory sharing app built to help families reconnect through photos and stories.
 
+**Status:** 🟢 Live and deployed
+
 ## About
 
 **Recuerdos** is a warm, accessible platform designed for families to share memories, photos, and stories together. Built with seniors in mind, it features large text, simple navigation, and an intuitive interface that makes it easy for anyone to participate, regardless of tech skills.
