@@ -7,11 +7,17 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import ProtectedPage from "@/components/ProtectedPage";
 import { getCurrentUser } from "@/lib/auth";
+import { DEEP_QUESTIONS, type DeepQuestion } from "@/lib/deep-questions";
 
 type Category = "childhood" | "family" | "pets" | "work" | "other";
+type Mode = "choose" | "guided" | "freeform";
 
 export default function AddMemory() {
   const user = getCurrentUser();
+  const [mode, setMode] = useState<Mode>("choose");
+  const [selectedQuestion, setSelectedQuestion] = useState<DeepQuestion | null>(
+    null
+  );
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(
     null
   );
@@ -44,6 +50,13 @@ export default function AddMemory() {
     work: "¿Dónde fue tomada esta foto? ¿Quiénes aparecen? ¿Qué representa para ti?",
     other:
       "Describe qué ves en la foto... ¿Cuándo fue? ¿Por qué es especial para ti?",
+  };
+
+  const handleQuestionSelect = (question: DeepQuestion) => {
+    setSelectedQuestion(question);
+    setSelectedCategory(question.category);
+    setStory(question.prompt + "\n\n");
+    setMode("freeform"); // Go to the form
   };
 
   const handlePromptClick = (prompt: string) => {
@@ -136,9 +149,88 @@ export default function AddMemory() {
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 py-8">
-        {/* Step 1: Category Selection */}
-        <section className="mb-8">
-          <h2 className="text-text mb-6">Elige una Categoría:</h2>
+        {/* Step 0: Choose Mode (Guided vs Free-form) */}
+        {mode === "choose" && (
+          <section className="mb-8">
+            <h2 className="text-text mb-6 text-center text-3xl">
+              ¿Qué quieres compartir?
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Guided Path - Answer a Question */}
+              <button
+                onClick={() => setMode("guided")}
+                className="bg-white border-2 border-border rounded-xl p-8 hover:border-primary hover:shadow-lg transition-all hover:scale-105 text-left"
+              >
+                <div className="text-6xl mb-4">💭</div>
+                <h3 className="text-text text-2xl font-semibold mb-2">
+                  Responder una Pregunta
+                </h3>
+                <p className="text-accent text-lg">
+                  Te mostraré preguntas especiales para ayudarte a compartir
+                  historias profundas
+                </p>
+              </button>
+
+              {/* Free-form Path - Share a Memory */}
+              <button
+                onClick={() => setMode("freeform")}
+                className="bg-white border-2 border-border rounded-xl p-8 hover:border-primary hover:shadow-lg transition-all hover:scale-105 text-left"
+              >
+                <div className="text-6xl mb-4">📸</div>
+                <h3 className="text-text text-2xl font-semibold mb-2">
+                  Compartir un Recuerdo
+                </h3>
+                <p className="text-accent text-lg">
+                  Sube una foto y escribe libremente sobre lo que quieras
+                  compartir
+                </p>
+              </button>
+            </div>
+          </section>
+        )}
+
+        {/* Guided Mode: Show Deep Questions */}
+        {mode === "guided" && (
+          <section className="mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <button
+                onClick={() => setMode("choose")}
+                className="text-accent hover:text-primary text-xl"
+              >
+                ← Volver
+              </button>
+              <h2 className="text-text text-2xl">Elige una Pregunta:</h2>
+              <div className="w-20"></div>
+            </div>
+
+            <div className="space-y-4">
+              {DEEP_QUESTIONS.map((question) => (
+                <button
+                  key={question.id}
+                  onClick={() => handleQuestionSelect(question)}
+                  className="w-full text-left p-6 bg-white border-2 border-border rounded-xl hover:border-primary hover:shadow-md transition-all text-text text-xl leading-relaxed"
+                >
+                  {question.text}
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Free-form Mode: Show Category Selection + Form */}
+        {mode === "freeform" && !selectedCategory && (
+          <section className="mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <button
+                onClick={() => setMode("choose")}
+                className="text-accent hover:text-primary text-xl"
+              >
+                ← Volver
+              </button>
+              <h2 className="text-text text-2xl">Elige una Categoría:</h2>
+              <div className="w-20"></div>
+            </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {categories.map((category) => (
@@ -161,10 +253,11 @@ export default function AddMemory() {
               </button>
             ))}
           </div>
-        </section>
+          </section>
+        )}
 
-        {/* Step 2: Photo Upload (only show after category selected) */}
-        {selectedCategory && (
+        {/* Step 2: Photo Upload (only show after category selected in both modes) */}
+        {mode === "freeform" && selectedCategory && (
           <section className="mb-8">
             <div className="flex items-center gap-3 mb-6">
               <h2 className="text-text">Agregar una Foto:</h2>
@@ -221,15 +314,23 @@ export default function AddMemory() {
           </section>
         )}
 
-        {/* Step 3: Story Text Area (show after category is selected) */}
-        {selectedCategory && (
+        {/* Step 3: Story Text Area (show after category is selected in both modes) */}
+        {mode === "freeform" && selectedCategory && (
           <section className="mb-8">
+            {/* Show question if coming from guided mode */}
+            {selectedQuestion && (
+              <div className="bg-primary text-white rounded-xl p-6 mb-6">
+                <p className="text-sm mb-2">Respondiendo a:</p>
+                <h3 className="text-2xl font-semibold">{selectedQuestion.text}</h3>
+              </div>
+            )}
+
             <h2 className="text-text mb-6">Escribe tu Historia:</h2>
 
             <textarea
               value={story}
               onChange={(e) => setStory(e.target.value)}
-              placeholder={placeholders[selectedCategory]}
+              placeholder={selectedQuestion ? "" : placeholders[selectedCategory]}
               rows={4}
               className="w-full p-4 border-2 border-border rounded-xl focus:border-primary focus:outline-none text-text text-lg resize-none"
               maxLength={1000}
@@ -242,8 +343,8 @@ export default function AddMemory() {
           </section>
         )}
 
-        {/* Step 4: Author Name & Submit */}
-        {selectedCategory && story.trim() && (
+        {/* Step 4: Author Name & Submit (show in both modes) */}
+        {mode === "freeform" && selectedCategory && story.trim() && (
           <section className="mb-8">
             <h2 className="text-text mb-6">¿Quién comparte este recuerdo?</h2>
 
