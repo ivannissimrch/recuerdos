@@ -1,64 +1,172 @@
+'use client';
+
+import Link from "next/link";
 import Image from "next/image";
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
+
+type Memory = {
+  id: string;
+  category: string;
+  photo_url: string;
+  story: string;
+  author_name: string;
+  created_at: string;
+};
 
 export default function Home() {
+  const [memories, setMemories] = useState<Memory[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchMemories();
+  }, []);
+
+  const fetchMemories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('memories')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setMemories(data || []);
+    } catch (error) {
+      console.error('Error fetching memories:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getCategoryIcon = (category: string) => {
+    const icons: Record<string, string> = {
+      childhood: '🧒',
+      family: '👨‍👩‍👧',
+      pets: '🐕',
+      work: '💼',
+      other: '📌',
+    };
+    return icons[category] || '📌';
+  };
+
+  const getCategoryLabel = (category: string) => {
+    const labels: Record<string, string> = {
+      childhood: 'Niñez',
+      family: 'Familia',
+      pets: 'Mascotas',
+      work: 'Trabajo',
+      other: 'Otro',
+    };
+    return labels[category] || 'Otro';
+  };
+
+  const getRelativeTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'Hoy';
+    if (diffDays === 1) return 'Ayer';
+    if (diffDays < 7) return `Hace ${diffDays} días`;
+    if (diffDays < 30) return `Hace ${Math.floor(diffDays / 7)} semanas`;
+    return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b-2 border-border">
+        <div className="max-w-6xl mx-auto px-4 py-6">
+          <h1 className="text-center text-primary text-2xl">
+            🌅 Recuerdos
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-center text-xl mt-2 text-accent">
+            Memorias Familiares
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-6xl mx-auto px-4 py-8">
+        {/* Add Memory Button - Prominent */}
+        <div className="mb-8">
+          <Link href="/add-memory">
+            <button className="w-full bg-primary text-white text-lg font-semibold py-4 px-8 rounded-xl shadow-lg hover:bg-accent transition-all hover:scale-105 active:scale-95">
+              ➕ Agregar Recuerdo
+            </button>
+          </Link>
         </div>
+
+        {/* Loading State */}
+        {isLoading && (
+          <div className="text-center py-16">
+            <div className="text-6xl mb-4">⏳</div>
+            <p className="text-xl text-accent">Cargando recuerdos...</p>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!isLoading && memories.length === 0 && (
+          <div className="text-center py-16">
+            <div className="text-8xl mb-6">📸</div>
+            <h2 className="mb-4 text-text">No hay recuerdos todavía</h2>
+            <p className="text-xl text-accent">
+              ¡Agrega tu primer recuerdo para comenzar!
+            </p>
+            <p className="text-lg mt-4 opacity-75 text-text">
+              Comparte fotos e historias con tu familia
+            </p>
+          </div>
+        )}
+
+        {/* Memory Cards Grid */}
+        {!isLoading && memories.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {memories.map((memory) => (
+              <Link
+                key={memory.id}
+                href={`/memory/${memory.id}`}
+                className="block bg-white border-2 border-border rounded-xl overflow-hidden hover:border-primary hover:shadow-lg transition-all hover:scale-105"
+              >
+                {/* Photo (if exists) */}
+                {memory.photo_url && (
+                  <div className="relative w-full h-64 bg-secondary">
+                    <Image
+                      src={memory.photo_url}
+                      alt={memory.story.substring(0, 50)}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                )}
+
+                {/* Content */}
+                <div className="p-4">
+                  {/* Category badge */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-2xl">{getCategoryIcon(memory.category)}</span>
+                    <span className="text-sm font-semibold text-accent bg-secondary px-3 py-1 rounded-full">
+                      {getCategoryLabel(memory.category)}
+                    </span>
+                  </div>
+
+                  {/* Story preview */}
+                  <p className="text-text text-lg mb-4 line-clamp-3">
+                    {memory.story.length > 100
+                      ? memory.story.substring(0, 100) + '...'
+                      : memory.story}
+                  </p>
+
+                  {/* Author and date */}
+                  <div className="flex items-center justify-between text-accent text-base">
+                    <span className="font-semibold">👤 {memory.author_name}</span>
+                    <span>📅 {getRelativeTime(memory.created_at)}</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </main>
     </div>
   );
