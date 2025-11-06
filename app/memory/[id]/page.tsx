@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import ProtectedPage from "@/components/ProtectedPage";
 
 type Memory = {
   id: string;
@@ -235,6 +236,7 @@ export default function MemoryDetail() {
   }
 
   return (
+    <ProtectedPage>
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b-2 border-border">
@@ -441,5 +443,6 @@ export default function MemoryDetail() {
         </div>
       </main>
     </div>
+    </ProtectedPage>
   );
 }

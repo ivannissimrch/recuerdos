@@ -4,6 +4,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import ProtectedPage from "@/components/ProtectedPage";
+import { getCurrentUser, canAddMemories } from "@/lib/auth";
 
 type Memory = {
   id: string;
@@ -17,6 +19,8 @@ type Memory = {
 export default function Home() {
   const [memories, setMemories] = useState<Memory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const user = getCurrentUser();
+  const canAdd = canAddMemories();
 
   useEffect(() => {
     fetchMemories();
@@ -73,29 +77,46 @@ export default function Home() {
     return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
   };
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b-2 border-border">
-        <div className="max-w-6xl mx-auto px-4 py-6">
-          <h1 className="text-center text-primary text-2xl">
-            🌅 Recuerdos
-          </h1>
-          <p className="text-center text-xl mt-2 text-accent">
-            Memorias Familiares
-          </p>
-        </div>
-      </header>
+    <ProtectedPage>
+      <div className="min-h-screen bg-background">
+        {/* Header */}
+        <header className="border-b-2 border-border">
+          <div className="max-w-6xl mx-auto px-4 py-6">
+            <h1 className="text-center text-primary text-2xl">
+              🌅 Recuerdos
+            </h1>
+            <p className="text-center text-xl mt-2 text-accent">
+              Memorias Familiares
+            </p>
+            {user && (
+              <p className="text-center text-accent text-sm mt-2">
+                Bienvenido, {user.name} 👋
+              </p>
+            )}
+          </div>
+        </header>
 
-      {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-4 py-8">
-        {/* Add Memory Button - Prominent */}
-        <div className="mb-8">
-          <Link href="/add-memory">
-            <button className="w-full bg-primary text-white text-lg font-semibold py-4 px-8 rounded-xl shadow-lg hover:bg-accent transition-all hover:scale-105 active:scale-95">
-              ➕ Agregar Recuerdo
-            </button>
-          </Link>
-        </div>
+        {/* Main Content */}
+        <main className="max-w-6xl mx-auto px-4 py-8">
+          {/* Add Memory Button - Only for family (not guests) */}
+          {canAdd && (
+            <div className="mb-8">
+              <Link href="/add-memory">
+                <button className="w-full bg-primary text-white text-lg font-semibold py-4 px-8 rounded-xl shadow-lg hover:bg-accent transition-all hover:scale-105 active:scale-95">
+                  ➕ Agregar Recuerdo
+                </button>
+              </Link>
+            </div>
+          )}
+
+          {/* Guest message */}
+          {!canAdd && (
+            <div className="mb-8 bg-secondary border-2 border-border rounded-xl p-6">
+              <p className="text-text text-lg text-center">
+                👀 Estás viendo como invitado. Solo puedes ver recuerdos.
+              </p>
+            </div>
+          )}
 
         {/* Loading State */}
         {isLoading && (
@@ -169,5 +190,6 @@ export default function Home() {
         )}
       </main>
     </div>
+    </ProtectedPage>
   );
 }

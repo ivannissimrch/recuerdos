@@ -5,10 +5,13 @@ import { useState, useRef } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import ProtectedPage from "@/components/ProtectedPage";
+import { getCurrentUser } from "@/lib/auth";
 
 type Category = "childhood" | "family" | "pets" | "work" | "other";
 
 export default function AddMemory() {
+  const user = getCurrentUser();
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(
     null
   );
@@ -116,6 +119,7 @@ export default function AddMemory() {
   ];
 
   return (
+    <ProtectedPage>
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b-2 border-border">
@@ -274,5 +278,6 @@ export default function AddMemory() {
         )}
       </main>
     </div>
+    </ProtectedPage>
   );
 }
