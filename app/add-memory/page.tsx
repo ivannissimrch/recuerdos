@@ -100,11 +100,18 @@ export default function AddMemory() {
         photoUrl = publicUrl;
       }
 
-      // 3. Insert memory into database
+      // 3. Prepare story text - include question if from guided mode
+      let finalStory = story.trim();
+      if (selectedQuestion) {
+        // Include the question at the start so context is preserved
+        finalStory = `📝 ${selectedQuestion.text}\n\n${story.trim()}`;
+      }
+
+      // 4. Insert memory into database
       const { error: insertError } = await supabase.from("memories").insert({
         category: selectedCategory,
         photo_url: photoUrl,
-        story: story.trim(),
+        story: finalStory,
         author_name: authorName.trim(),
       });
 
