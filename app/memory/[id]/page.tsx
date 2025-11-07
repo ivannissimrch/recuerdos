@@ -28,6 +28,7 @@ type Reaction = {
   id: string;
   memory_id: string;
   author_name: string;
+  reaction_type: string; // 'rucho' or 'leo'
   created_at: string;
 };
 
@@ -45,6 +46,7 @@ export default function MemoryDetail() {
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const [reactAuthorName, setReactAuthorName] = useState<string>("");
   const [showReactInput, setShowReactInput] = useState(false);
+  const [selectedReactionType, setSelectedReactionType] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -102,7 +104,7 @@ export default function MemoryDetail() {
     }
   };
 
-  const handleAddReaction = async () => {
+  const handleAddReaction = async (reactionType: string) => {
     if (!reactAuthorName.trim()) {
       alert("Por favor ingresa tu nombre");
       return;
@@ -112,12 +114,13 @@ export default function MemoryDetail() {
       const { error } = await supabase.from("reactions").insert({
         memory_id: id,
         author_name: reactAuthorName.trim(),
+        reaction_type: reactionType,
       });
 
       if (error) {
-        // Check if already reacted
+        // Check if already reacted with this type
         if (error.code === "23505") {
-          alert("Ya has reaccionado a este recuerdo ❤️");
+          alert("Ya has reaccionado con esta mascota 🐕");
           return;
         }
         throw error;
@@ -126,6 +129,8 @@ export default function MemoryDetail() {
       // Refresh reactions
       await fetchReactions();
       setShowReactInput(false);
+      setSelectedReactionType(null);
+      setReactAuthorName("");
     } catch (err: any) {
       console.error("Error adding reaction:", err);
       alert("Error al agregar reacción");
@@ -307,60 +312,162 @@ export default function MemoryDetail() {
           </div>
         </div>
 
-        {/* Reactions Section */}
+        {/* Reactions Section - Pet Reactions */}
         <div className="bg-white border-2 border-border rounded-xl p-6 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-text text-2xl font-semibold flex items-center gap-2">
-              <span>❤️</span>
-              {reactions.length}{" "}
-              {reactions.length === 1 ? "Persona" : "Personas"}
-            </h3>
-            <button
-              onClick={() => setShowReactInput(!showReactInput)}
-              className="bg-primary text-white px-6 py-3 rounded-xl hover:bg-accent transition-all text-lg font-semibold"
-            >
-              ❤️ Me Gusta
-            </button>
-          </div>
+          <h3 className="text-text text-2xl font-semibold mb-6 flex items-center gap-2">
+            <span>🐾</span>
+            Reacciones ({reactions.length})
+          </h3>
 
-          {/* Who reacted */}
-          {reactions.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-4">
-              {reactions.map((reaction) => (
-                <span
-                  key={reaction.id}
-                  className="bg-secondary px-4 py-2 rounded-full text-text font-semibold"
-                >
-                  👤 {reaction.author_name}
+          {/* Pet Reaction Buttons */}
+          {!showReactInput && (
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              {/* Rucho (Chihuahua) */}
+              <button
+                onClick={() => {
+                  setSelectedReactionType('rucho');
+                  setShowReactInput(true);
+                }}
+                className="flex flex-col items-center gap-3 p-6 bg-secondary border-2 border-border rounded-xl hover:border-primary hover:shadow-lg transition-all hover:scale-105"
+              >
+                <Image
+                  src="/CoolRucho.png"
+                  alt="Rucho"
+                  width={80}
+                  height={80}
+                  className="rounded-full"
+                />
+                <span className="text-text text-lg font-semibold">Rucho 🐕</span>
+                <span className="text-accent text-sm">
+                  {reactions.filter(r => r.reaction_type === 'rucho').length}
                 </span>
-              ))}
+              </button>
+
+              {/* Leo (Poodle) */}
+              <button
+                onClick={() => {
+                  setSelectedReactionType('leo');
+                  setShowReactInput(true);
+                }}
+                className="flex flex-col items-center gap-3 p-6 bg-secondary border-2 border-border rounded-xl hover:border-primary hover:shadow-lg transition-all hover:scale-105"
+              >
+                <Image
+                  src="/happyLeo.png"
+                  alt="Leo"
+                  width={80}
+                  height={80}
+                  className="rounded-full"
+                />
+                <span className="text-text text-lg font-semibold">Leo 🐩</span>
+                <span className="text-accent text-sm">
+                  {reactions.filter(r => r.reaction_type === 'leo').length}
+                </span>
+              </button>
             </div>
           )}
 
-          {/* React input */}
-          {showReactInput && (
-            <div className="border-t-2 border-border pt-4">
+          {/* Who reacted - Grouped by reaction type */}
+          {reactions.length > 0 && (
+            <div className="space-y-4 mb-6">
+              {/* Rucho reactions */}
+              {reactions.filter(r => r.reaction_type === 'rucho').length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Image src="/CoolRucho.png" alt="Rucho" width={30} height={30} className="rounded-full" />
+                    <span className="text-text font-semibold">Rucho:</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2 ml-10">
+                    {reactions
+                      .filter(r => r.reaction_type === 'rucho')
+                      .map((reaction) => (
+                        <span
+                          key={reaction.id}
+                          className="bg-secondary px-3 py-1 rounded-full text-text text-sm"
+                        >
+                          {reaction.author_name}
+                        </span>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Leo reactions */}
+              {reactions.filter(r => r.reaction_type === 'leo').length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Image src="/happyLeo.png" alt="Leo" width={30} height={30} className="rounded-full" />
+                    <span className="text-text font-semibold">Leo:</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2 ml-10">
+                    {reactions
+                      .filter(r => r.reaction_type === 'leo')
+                      .map((reaction) => (
+                        <span
+                          key={reaction.id}
+                          className="bg-secondary px-3 py-1 rounded-full text-text text-sm"
+                        >
+                          {reaction.author_name}
+                        </span>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* React input - Name entry after selecting pet */}
+          {showReactInput && selectedReactionType && (
+            <div className="border-t-2 border-border pt-6">
+              <div className="flex items-center gap-3 mb-4">
+                <Image
+                  src={selectedReactionType === 'rucho' ? '/CoolRucho.png' : '/happyLeo.png'}
+                  alt={selectedReactionType === 'rucho' ? 'Rucho' : 'Leo'}
+                  width={50}
+                  height={50}
+                  className="rounded-full"
+                />
+                <h4 className="text-text text-xl font-semibold">
+                  Reaccionar con {selectedReactionType === 'rucho' ? 'Rucho 🐕' : 'Leo 🐩'}
+                </h4>
+              </div>
+
               <input
                 type="text"
                 value={reactAuthorName}
                 onChange={(e) => setReactAuthorName(e.target.value)}
                 placeholder="Tu nombre"
                 className="w-full p-4 border-2 border-border rounded-xl focus:border-primary focus:outline-none text-text text-lg mb-4"
+                autoFocus
                 onKeyPress={(e) => {
-                  if (e.key === "Enter") handleAddReaction();
+                  if (e.key === "Enter" && reactAuthorName.trim()) {
+                    handleAddReaction(selectedReactionType);
+                  }
                 }}
               />
-              <button
-                onClick={handleAddReaction}
-                disabled={!reactAuthorName.trim()}
-                className={`w-full py-3 px-6 rounded-xl text-lg font-semibold transition-all ${
-                  !reactAuthorName.trim()
-                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                    : "bg-primary text-white hover:bg-accent"
-                }`}
-              >
-                ❤️ Enviar
-              </button>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowReactInput(false);
+                    setSelectedReactionType(null);
+                    setReactAuthorName("");
+                  }}
+                  className="flex-1 py-3 px-6 rounded-xl text-lg font-semibold bg-gray-300 text-gray-700 hover:bg-gray-400 transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => handleAddReaction(selectedReactionType)}
+                  disabled={!reactAuthorName.trim()}
+                  className={`flex-1 py-3 px-6 rounded-xl text-lg font-semibold transition-all ${
+                    !reactAuthorName.trim()
+                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      : "bg-primary text-white hover:bg-accent"
+                  }`}
+                >
+                  🐾 Enviar
+                </button>
+              </div>
             </div>
           )}
         </div>
