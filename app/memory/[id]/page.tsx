@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import ProtectedPage from "@/components/ProtectedPage";
+import { getCurrentUser } from "@/lib/auth";
 
 type Memory = {
   id: string;
@@ -35,6 +36,7 @@ type Reaction = {
 export default function MemoryDetail() {
   const params = useParams();
   const id = params.id as string;
+  const user = getCurrentUser();
 
   const [memory, setMemory] = useState<Memory | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -42,11 +44,13 @@ export default function MemoryDetail() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [newComment, setNewComment] = useState<string>("");
-  const [commentAuthor, setCommentAuthor] = useState<string>("");
+  const [commentAuthor, setCommentAuthor] = useState<string>(user?.name || "");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
-  const [reactAuthorName, setReactAuthorName] = useState<string>("");
+  const [reactAuthorName, setReactAuthorName] = useState<string>(user?.name || "");
   const [showReactInput, setShowReactInput] = useState(false);
-  const [selectedReactionType, setSelectedReactionType] = useState<string | null>(null);
+  const [selectedReactionType, setSelectedReactionType] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     if (id) {
@@ -162,6 +166,27 @@ export default function MemoryDetail() {
     }
   };
 
+  const handleDeleteComment = async (commentId: string) => {
+    if (!confirm("¿Estás seguro de eliminar este comentario?")) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("comments")
+        .delete()
+        .eq("id", commentId);
+
+      if (error) throw error;
+
+      // Refresh comments
+      await fetchComments();
+    } catch (err: any) {
+      console.error("Error deleting comment:", err);
+      alert("Error al eliminar comentario");
+    }
+  };
+
   const getRelativeTime = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -242,314 +267,541 @@ export default function MemoryDetail() {
 
   return (
     <ProtectedPage>
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b-2 border-border">
-        <div className="max-w-6xl mx-auto px-4 py-6">
-          <Link
-            href="/"
-            className="text-accent hover:text-primary text-xl flex items-center gap-2"
-          >
-            ← Volver a Recuerdos
-          </Link>
-        </div>
-      </header>
+      <div className="min-h-screen bg-background">
+        {/* Header */}
+        <header className="border-b-2 border-border">
+          <div className="max-w-6xl mx-auto px-4 py-6">
+            <Link
+              href="/"
+              className="text-accent hover:text-primary text-xl flex items-center gap-2"
+            >
+              ← Volver a Recuerdos
+            </Link>
+          </div>
+        </header>
 
-      {/* Main Content */}
-      <main className="max-w-4xl mx-auto px-4 py-8">
-        {/* Category Badge */}
-        <div className="flex items-center gap-3 mb-6">
-          <span className="text-4xl">{getCategoryIcon(memory.category)}</span>
-          <span className="text-xl font-semibold text-accent bg-secondary px-4 py-2 rounded-full">
-            {getCategoryLabel(memory.category)}
-          </span>
-        </div>
-
-        {/* Main Memory Card - Photo + Story + Author unified */}
-        <div className="bg-white border-2 border-border rounded-xl overflow-hidden shadow-lg mb-6">
-          {/* Photo (if exists) */}
-          {memory.photo_url && (
-            <div className="relative w-full aspect-[4/3] border-b-2 border-border">
-              <Image
-                src={memory.photo_url}
-                alt={memory.story.substring(0, 50)}
-                fill
-                className="object-contain"
-                priority
-              />
+        {/* Main Content */}
+        <main className="max-w-4xl mx-auto px-4 py-8">
+          {/* Category Badge + Edit Button */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <span className="text-4xl">{getCategoryIcon(memory.category)}</span>
+              <span className="text-xl font-semibold text-accent bg-secondary px-4 py-2 rounded-full">
+                {getCategoryLabel(memory.category)}
+              </span>
             </div>
-          )}
-
-          {/* Story */}
-          <div className="p-6 border-b-2 border-border">
-            <p className="text-text text-xl leading-relaxed whitespace-pre-wrap">
-              {memory.story}
-            </p>
+            {/* Edit button - simple, senior friendly */}
+            <Link href={`/edit-memory/${memory.id}`}>
+              <button className="bg-primary text-white px-6 py-3 rounded-xl hover:bg-accent transition-all text-lg font-semibold flex items-center gap-2">
+                ✏️ Editar
+              </button>
+            </Link>
           </div>
 
-          {/* Author and Date Footer */}
-          <div className="bg-secondary p-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <span className="text-3xl">👤</span>
-                <div>
-                  <p className="text-sm text-accent">Compartido por</p>
-                  <p className="text-text text-2xl font-semibold">
-                    {memory.author_name}
-                  </p>
+          {/* Main Memory Card - Photo + Story + Author unified */}
+          <div className="bg-white border-2 border-border rounded-xl overflow-hidden shadow-lg mb-6">
+            {/* Photo (if exists) */}
+            {memory.photo_url && (
+              <div className="relative w-full aspect-[4/3] border-b-2 border-border">
+                <Image
+                  src={memory.photo_url}
+                  alt={memory.story.substring(0, 50)}
+                  fill
+                  className="object-contain"
+                  priority
+                />
+              </div>
+            )}
+
+            {/* Story */}
+            <div className="p-6 border-b-2 border-border">
+              <p className="text-text text-xl leading-relaxed whitespace-pre-wrap">
+                {memory.story}
+              </p>
+            </div>
+
+            {/* Author and Date Footer */}
+            <div className="bg-secondary p-6 border-b-2 border-border">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">👤</span>
+                  <div>
+                    <p className="text-sm text-accent">Compartido por</p>
+                    <p className="text-text text-2xl font-semibold">
+                      {memory.author_name}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">📅</span>
+                  <div>
+                    <p className="text-sm text-accent">Fecha</p>
+                    <p className="text-text text-lg">
+                      {getFormattedDate(memory.created_at)}
+                    </p>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-3xl">📅</span>
-                <div>
-                  <p className="text-sm text-accent">Fecha</p>
-                  <p className="text-text text-lg">
-                    {getFormattedDate(memory.created_at)}
-                  </p>
+            </div>
+
+            {/* Reactions Section - Pet Reactions (NOW INSIDE CARD!) */}
+            <div className="p-6">
+              <h3 className="text-text text-2xl font-semibold mb-6 flex items-center gap-2">
+                <span>🐾</span>
+                Reacciona con:
+              </h3>
+
+            {/* Pet Reaction Buttons */}
+            {!showReactInput && (
+              <div>
+              <div className="grid grid-cols-3 gap-4 mb-4">
+                {/* Rucho - Chido */}
+                <button
+                  onClick={() => {
+                    setSelectedReactionType("rucho");
+                    setShowReactInput(true);
+                  }}
+                  className="flex flex-col items-center gap-3 p-6 bg-secondary border-2 border-border rounded-xl hover:border-primary hover:shadow-lg transition-all hover:scale-105"
+                >
+                  <Image
+                    src="/CoolRucho.png"
+                    alt="Chido"
+                    width={80}
+                    height={80}
+                    className="rounded-full"
+                  />
+                  <span className="text-text text-lg font-semibold">
+                    Chido 😎
+                  </span>
+                  <span className="text-accent text-sm">
+                    {
+                      reactions.filter((r) => r.reaction_type === "rucho")
+                        .length
+                    }
+                  </span>
+                </button>
+
+                {/* Leo - Feliz */}
+                <button
+                  onClick={() => {
+                    setSelectedReactionType("leo");
+                    setShowReactInput(true);
+                  }}
+                  className="flex flex-col items-center gap-3 p-6 bg-secondary border-2 border-border rounded-xl hover:border-primary hover:shadow-lg transition-all hover:scale-105"
+                >
+                  <Image
+                    src="/happyLeo.png"
+                    alt="Feliz"
+                    width={80}
+                    height={80}
+                    className="rounded-full"
+                  />
+                  <span className="text-text text-lg font-semibold">
+                    Feliz 😊
+                  </span>
+                  <span className="text-accent text-sm">
+                    {reactions.filter((r) => r.reaction_type === "leo").length}
+                  </span>
+                </button>
+
+                {/* Lombriz - El Campion */}
+                <button
+                  onClick={() => {
+                    setSelectedReactionType("lombriz");
+                    setShowReactInput(true);
+                  }}
+                  className="flex flex-col items-center gap-3 p-6 bg-secondary border-2 border-border rounded-xl hover:border-primary hover:shadow-lg transition-all hover:scale-105"
+                >
+                  <Image
+                    src="/felizLombriz.png"
+                    alt="El Campion"
+                    width={80}
+                    height={80}
+                    className="rounded-full"
+                  />
+                  <span className="text-text text-lg font-semibold">Feliz</span>
+                  <span className="text-accent text-sm">
+                    {
+                      reactions.filter((r) => r.reaction_type === "lombriz")
+                        .length
+                    }
+                  </span>
+                </button>
+
+                {/* Gato - Gato Ok */}
+                <button
+                  onClick={() => {
+                    setSelectedReactionType("gato");
+                    setShowReactInput(true);
+                  }}
+                  className="flex flex-col items-center gap-3 p-6 bg-secondary border-2 border-border rounded-xl hover:border-primary hover:shadow-lg transition-all hover:scale-105"
+                >
+                  <Image
+                    src="/gatoOk.png"
+                    alt="Gato Ok"
+                    width={80}
+                    height={80}
+                    className="rounded-full"
+                  />
+                  <span className="text-text text-lg font-semibold">
+                    Gato Ok 👌
+                  </span>
+                  <span className="text-accent text-sm">
+                    {reactions.filter((r) => r.reaction_type === "gato").length}
+                  </span>
+                </button>
+
+                {/* Heart - Classic */}
+                <button
+                  onClick={() => {
+                    setSelectedReactionType("heart");
+                    setShowReactInput(true);
+                  }}
+                  className="flex flex-col items-center gap-3 p-6 bg-secondary border-2 border-border rounded-xl hover:border-primary hover:shadow-lg transition-all hover:scale-105"
+                >
+                  <span className="text-7xl">❤️</span>
+                  <span className="text-text text-lg font-semibold">
+                    Me Gusta
+                  </span>
+                  <span className="text-accent text-sm">
+                    {reactions.filter((r) => r.reaction_type === "heart").length}
+                  </span>
+                </button>
+              </div>
+
+              {/* Show total reactions count if any */}
+              {reactions.filter(r => r.reaction_type).length > 0 && (
+                <p className="text-accent text-lg text-center mb-4">
+                  {reactions.filter(r => r.reaction_type).length} {reactions.filter(r => r.reaction_type).length === 1 ? 'persona reaccionó' : 'personas reaccionaron'} a este recuerdo
+                </p>
+              )}
+              </div>
+            )}
+
+            {/* Who reacted - Grouped by reaction type */}
+            {reactions.length > 0 && (
+              <div className="space-y-4 mb-6">
+                {/* Chido (Rucho) reactions */}
+                {reactions.filter((r) => r.reaction_type === "rucho").length >
+                  0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Image
+                        src="/CoolRucho.png"
+                        alt="Chido"
+                        width={30}
+                        height={30}
+                        className="rounded-full"
+                      />
+                      <span className="text-text font-semibold">Chido 😎:</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2 ml-10">
+                      {reactions
+                        .filter((r) => r.reaction_type === "rucho")
+                        .map((reaction) => (
+                          <span
+                            key={reaction.id}
+                            className="bg-secondary px-3 py-1 rounded-full text-text text-sm"
+                          >
+                            {reaction.author_name}
+                          </span>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Feliz (Leo) reactions */}
+                {reactions.filter((r) => r.reaction_type === "leo").length >
+                  0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Image
+                        src="/happyLeo.png"
+                        alt="Feliz"
+                        width={30}
+                        height={30}
+                        className="rounded-full"
+                      />
+                      <span className="text-text font-semibold">Feliz 😊:</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2 ml-10">
+                      {reactions
+                        .filter((r) => r.reaction_type === "leo")
+                        .map((reaction) => (
+                          <span
+                            key={reaction.id}
+                            className="bg-secondary px-3 py-1 rounded-full text-text text-sm"
+                          >
+                            {reaction.author_name}
+                          </span>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* El Campion (Lombriz) reactions */}
+                {reactions.filter((r) => r.reaction_type === "lombriz").length >
+                  0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Image
+                        src="/felizLombriz.png"
+                        alt="El Campion"
+                        width={30}
+                        height={30}
+                        className="rounded-full"
+                      />
+                      <span className="text-text font-semibold">
+                        El Campion 🏆:
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-2 ml-10">
+                      {reactions
+                        .filter((r) => r.reaction_type === "lombriz")
+                        .map((reaction) => (
+                          <span
+                            key={reaction.id}
+                            className="bg-secondary px-3 py-1 rounded-full text-text text-sm"
+                          >
+                            {reaction.author_name}
+                          </span>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Gato Ok reactions */}
+                {reactions.filter((r) => r.reaction_type === "gato").length >
+                  0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Image
+                        src="/gatoOk.png"
+                        alt="Gato Ok"
+                        width={30}
+                        height={30}
+                        className="rounded-full"
+                      />
+                      <span className="text-text font-semibold">
+                        Gato Ok 👌:
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-2 ml-10">
+                      {reactions
+                        .filter((r) => r.reaction_type === "gato")
+                        .map((reaction) => (
+                          <span
+                            key={reaction.id}
+                            className="bg-secondary px-3 py-1 rounded-full text-text text-sm"
+                          >
+                            {reaction.author_name}
+                          </span>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Heart reactions */}
+                {reactions.filter((r) => r.reaction_type === "heart").length >
+                  0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-3xl">❤️</span>
+                      <span className="text-text font-semibold">
+                        Me Gusta:
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-2 ml-10">
+                      {reactions
+                        .filter((r) => r.reaction_type === "heart")
+                        .map((reaction) => (
+                          <span
+                            key={reaction.id}
+                            className="bg-secondary px-3 py-1 rounded-full text-text text-sm"
+                          >
+                            {reaction.author_name}
+                          </span>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* React input - Name entry after selecting pet */}
+            {showReactInput && selectedReactionType && (
+              <div className="border-t-2 border-border pt-6">
+                <div className="flex items-center gap-3 mb-4">
+                  {selectedReactionType === "heart" ? (
+                    <span className="text-5xl">❤️</span>
+                  ) : (
+                    <Image
+                      src={
+                        selectedReactionType === "rucho"
+                          ? "/CoolRucho.png"
+                          : selectedReactionType === "leo"
+                          ? "/happyLeo.png"
+                          : selectedReactionType === "lombriz"
+                          ? "/felizLombriz.png"
+                          : "/gatoOk.png"
+                      }
+                      alt={
+                        selectedReactionType === "rucho"
+                          ? "Chido"
+                          : selectedReactionType === "leo"
+                          ? "Feliz"
+                          : selectedReactionType === "lombriz"
+                          ? "El Campion"
+                          : "Gato Ok"
+                      }
+                      width={50}
+                      height={50}
+                      className="rounded-full"
+                    />
+                  )}
+                  <h4 className="text-text text-xl font-semibold">
+                    Reaccionar con{" "}
+                    {selectedReactionType === "rucho"
+                      ? "Chido 😎"
+                      : selectedReactionType === "leo"
+                      ? "Feliz 😊"
+                      : selectedReactionType === "lombriz"
+                      ? "El Campion 🏆"
+                      : selectedReactionType === "gato"
+                      ? "Gato Ok 👌"
+                      : "Me Gusta ❤️"}
+                  </h4>
+                </div>
+
+                <input
+                  type="text"
+                  value={reactAuthorName}
+                  onChange={(e) => setReactAuthorName(e.target.value)}
+                  placeholder="Tu nombre"
+                  className="w-full p-4 border-2 border-border rounded-xl focus:border-primary focus:outline-none text-text text-lg mb-4"
+                  autoFocus
+                  onKeyPress={(e) => {
+                    if (e.key === "Enter" && reactAuthorName.trim()) {
+                      handleAddReaction(selectedReactionType);
+                    }
+                  }}
+                />
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShowReactInput(false);
+                      setSelectedReactionType(null);
+                      setReactAuthorName("");
+                    }}
+                    className="flex-1 py-3 px-6 rounded-xl text-lg font-semibold bg-gray-300 text-gray-700 hover:bg-gray-400 transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={() => handleAddReaction(selectedReactionType)}
+                    disabled={!reactAuthorName.trim()}
+                    className={`flex-1 py-3 px-6 rounded-xl text-lg font-semibold transition-all ${
+                      !reactAuthorName.trim()
+                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                        : "bg-primary text-white hover:bg-accent"
+                    }`}
+                  >
+                    🐾 Enviar
+                  </button>
                 </div>
               </div>
+            )}
             </div>
           </div>
-        </div>
 
-        {/* Reactions Section - Pet Reactions */}
-        <div className="bg-white border-2 border-border rounded-xl p-6 mb-6">
-          <h3 className="text-text text-2xl font-semibold mb-6 flex items-center gap-2">
-            <span>🐾</span>
-            Reacciones ({reactions.length})
-          </h3>
+          {/* Comments Section */}
+          <div className="bg-white border-2 border-border rounded-xl p-6">
+            <h3 className="text-text text-2xl font-semibold mb-6 flex items-center gap-2">
+              <span>💬</span>
+              Comentarios ({comments.length})
+            </h3>
 
-          {/* Pet Reaction Buttons */}
-          {!showReactInput && (
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              {/* Rucho (Chihuahua) */}
-              <button
-                onClick={() => {
-                  setSelectedReactionType('rucho');
-                  setShowReactInput(true);
-                }}
-                className="flex flex-col items-center gap-3 p-6 bg-secondary border-2 border-border rounded-xl hover:border-primary hover:shadow-lg transition-all hover:scale-105"
-              >
-                <Image
-                  src="/CoolRucho.png"
-                  alt="Rucho"
-                  width={80}
-                  height={80}
-                  className="rounded-full"
-                />
-                <span className="text-text text-lg font-semibold">Rucho 🐕</span>
-                <span className="text-accent text-sm">
-                  {reactions.filter(r => r.reaction_type === 'rucho').length}
-                </span>
-              </button>
-
-              {/* Leo (Poodle) */}
-              <button
-                onClick={() => {
-                  setSelectedReactionType('leo');
-                  setShowReactInput(true);
-                }}
-                className="flex flex-col items-center gap-3 p-6 bg-secondary border-2 border-border rounded-xl hover:border-primary hover:shadow-lg transition-all hover:scale-105"
-              >
-                <Image
-                  src="/happyLeo.png"
-                  alt="Leo"
-                  width={80}
-                  height={80}
-                  className="rounded-full"
-                />
-                <span className="text-text text-lg font-semibold">Leo 🐩</span>
-                <span className="text-accent text-sm">
-                  {reactions.filter(r => r.reaction_type === 'leo').length}
-                </span>
-              </button>
-            </div>
-          )}
-
-          {/* Who reacted - Grouped by reaction type */}
-          {reactions.length > 0 && (
+            {/* Comments List */}
             <div className="space-y-4 mb-6">
-              {/* Rucho reactions */}
-              {reactions.filter(r => r.reaction_type === 'rucho').length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Image src="/CoolRucho.png" alt="Rucho" width={30} height={30} className="rounded-full" />
-                    <span className="text-text font-semibold">Rucho:</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2 ml-10">
-                    {reactions
-                      .filter(r => r.reaction_type === 'rucho')
-                      .map((reaction) => (
-                        <span
-                          key={reaction.id}
-                          className="bg-secondary px-3 py-1 rounded-full text-text text-sm"
+              {comments.length === 0 ? (
+                <p className="text-accent text-center py-8">
+                  No hay comentarios todavía. ¡Sé el primero en comentar!
+                </p>
+              ) : (
+                comments.map((comment) => (
+                  <div
+                    key={comment.id}
+                    className="bg-secondary border border-border rounded-lg p-4"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <p className="text-text font-semibold text-lg">
+                        👤 {comment.author_name}
+                      </p>
+                      <div className="flex items-center gap-3">
+                        <p className="text-accent text-sm">
+                          {getRelativeTime(comment.created_at)}
+                        </p>
+                        <button
+                          onClick={() => handleDeleteComment(comment.id)}
+                          className="text-red-500 hover:text-red-700 text-2xl transition-all hover:scale-110"
+                          title="Eliminar comentario"
                         >
-                          {reaction.author_name}
-                        </span>
-                      ))}
+                          🗑️
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-text text-lg whitespace-pre-wrap">
+                      {comment.comment_text}
+                    </p>
                   </div>
-                </div>
-              )}
-
-              {/* Leo reactions */}
-              {reactions.filter(r => r.reaction_type === 'leo').length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Image src="/happyLeo.png" alt="Leo" width={30} height={30} className="rounded-full" />
-                    <span className="text-text font-semibold">Leo:</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2 ml-10">
-                    {reactions
-                      .filter(r => r.reaction_type === 'leo')
-                      .map((reaction) => (
-                        <span
-                          key={reaction.id}
-                          className="bg-secondary px-3 py-1 rounded-full text-text text-sm"
-                        >
-                          {reaction.author_name}
-                        </span>
-                      ))}
-                  </div>
-                </div>
+                ))
               )}
             </div>
-          )}
 
-          {/* React input - Name entry after selecting pet */}
-          {showReactInput && selectedReactionType && (
+            {/* Add Comment Form */}
             <div className="border-t-2 border-border pt-6">
-              <div className="flex items-center gap-3 mb-4">
-                <Image
-                  src={selectedReactionType === 'rucho' ? '/CoolRucho.png' : '/happyLeo.png'}
-                  alt={selectedReactionType === 'rucho' ? 'Rucho' : 'Leo'}
-                  width={50}
-                  height={50}
-                  className="rounded-full"
-                />
-                <h4 className="text-text text-xl font-semibold">
-                  Reaccionar con {selectedReactionType === 'rucho' ? 'Rucho 🐕' : 'Leo 🐩'}
-                </h4>
-              </div>
+              <h4 className="text-text text-xl font-semibold mb-4">
+                Agregar Comentario:
+              </h4>
 
               <input
                 type="text"
-                value={reactAuthorName}
-                onChange={(e) => setReactAuthorName(e.target.value)}
+                value={commentAuthor}
+                onChange={(e) => setCommentAuthor(e.target.value)}
                 placeholder="Tu nombre"
                 className="w-full p-4 border-2 border-border rounded-xl focus:border-primary focus:outline-none text-text text-lg mb-4"
-                autoFocus
-                onKeyPress={(e) => {
-                  if (e.key === "Enter" && reactAuthorName.trim()) {
-                    handleAddReaction(selectedReactionType);
-                  }
-                }}
               />
 
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setShowReactInput(false);
-                    setSelectedReactionType(null);
-                    setReactAuthorName("");
-                  }}
-                  className="flex-1 py-3 px-6 rounded-xl text-lg font-semibold bg-gray-300 text-gray-700 hover:bg-gray-400 transition-all"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={() => handleAddReaction(selectedReactionType)}
-                  disabled={!reactAuthorName.trim()}
-                  className={`flex-1 py-3 px-6 rounded-xl text-lg font-semibold transition-all ${
-                    !reactAuthorName.trim()
-                      ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                      : "bg-primary text-white hover:bg-accent"
-                  }`}
-                >
-                  🐾 Enviar
-                </button>
-              </div>
+              <textarea
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Escribe tu comentario..."
+                rows={4}
+                className="w-full p-4 border-2 border-border rounded-xl focus:border-primary focus:outline-none text-text text-lg resize-none mb-4"
+              />
+
+              <button
+                onClick={handleAddComment}
+                disabled={
+                  isSubmittingComment ||
+                  !newComment.trim() ||
+                  !commentAuthor.trim()
+                }
+                className={`w-full py-4 px-8 rounded-xl text-xl font-semibold transition-all ${
+                  isSubmittingComment ||
+                  !newComment.trim() ||
+                  !commentAuthor.trim()
+                    ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    : "bg-primary text-white hover:bg-accent hover:scale-105 active:scale-95"
+                }`}
+              >
+                {isSubmittingComment ? "⏳ Enviando..." : "💬 Comentar"}
+              </button>
             </div>
-          )}
-        </div>
-
-        {/* Comments Section */}
-        <div className="bg-white border-2 border-border rounded-xl p-6">
-          <h3 className="text-text text-2xl font-semibold mb-6 flex items-center gap-2">
-            <span>💬</span>
-            Comentarios ({comments.length})
-          </h3>
-
-          {/* Comments List */}
-          <div className="space-y-4 mb-6">
-            {comments.length === 0 ? (
-              <p className="text-accent text-center py-8">
-                No hay comentarios todavía. ¡Sé el primero en comentar!
-              </p>
-            ) : (
-              comments.map((comment) => (
-                <div
-                  key={comment.id}
-                  className="bg-secondary border border-border rounded-lg p-4"
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <p className="text-text font-semibold text-lg">
-                      👤 {comment.author_name}
-                    </p>
-                    <p className="text-accent text-sm">
-                      {getRelativeTime(comment.created_at)}
-                    </p>
-                  </div>
-                  <p className="text-text text-lg whitespace-pre-wrap">
-                    {comment.comment_text}
-                  </p>
-                </div>
-              ))
-            )}
           </div>
-
-          {/* Add Comment Form */}
-          <div className="border-t-2 border-border pt-6">
-            <h4 className="text-text text-xl font-semibold mb-4">
-              Agregar Comentario:
-            </h4>
-
-            <input
-              type="text"
-              value={commentAuthor}
-              onChange={(e) => setCommentAuthor(e.target.value)}
-              placeholder="Tu nombre"
-              className="w-full p-4 border-2 border-border rounded-xl focus:border-primary focus:outline-none text-text text-lg mb-4"
-            />
-
-            <textarea
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Escribe tu comentario..."
-              rows={4}
-              className="w-full p-4 border-2 border-border rounded-xl focus:border-primary focus:outline-none text-text text-lg resize-none mb-4"
-            />
-
-            <button
-              onClick={handleAddComment}
-              disabled={
-                isSubmittingComment ||
-                !newComment.trim() ||
-                !commentAuthor.trim()
-              }
-              className={`w-full py-4 px-8 rounded-xl text-xl font-semibold transition-all ${
-                isSubmittingComment ||
-                !newComment.trim() ||
-                !commentAuthor.trim()
-                  ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                  : "bg-primary text-white hover:bg-accent hover:scale-105 active:scale-95"
-              }`}
-            >
-              {isSubmittingComment ? "⏳ Enviando..." : "💬 Comentar"}
-            </button>
-          </div>
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
     </ProtectedPage>
   );
 }
