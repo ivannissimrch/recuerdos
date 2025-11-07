@@ -327,9 +327,9 @@ export default function MemoryDetail() {
 
           {/* Main Memory Card - Photo + Story + Author unified */}
           <div className="bg-white border-2 border-border rounded-xl overflow-hidden shadow-lg mb-6">
-            {/* Photo (if exists) */}
+            {/* Photo (if exists) - BIG for seniors! */}
             {memory.photo_url && (
-              <div className="relative w-full aspect-[4/3] border-b-2 border-border">
+              <div className="relative w-full min-h-[400px] md:min-h-[600px] border-b-2 border-border bg-secondary">
                 <Image
                   src={memory.photo_url}
                   alt={memory.story.substring(0, 50)}
