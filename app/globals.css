@@ -61,6 +61,7 @@ h3 {
   background-color: var(--primary);
   color: white;
   border: none;
+  font-weight: 700; /* Bold for clarity */
 }
 
 .btn-primary:hover {
