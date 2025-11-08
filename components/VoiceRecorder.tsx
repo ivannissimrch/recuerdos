@@ -11,6 +11,9 @@ export default function VoiceRecorder({ onTranscriptChange, currentText }: Voice
   const [isListening, setIsListening] = useState(false)
   const [isSupported, setIsSupported] = useState(true)
   const recognitionRef = useRef<any>(null)
+  const baseTextRef = useRef('')
+  const lastProcessedIndexRef = useRef(0)
+  const isRestartingRef = useRef(false)
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -27,10 +30,30 @@ export default function VoiceRecorder({ onTranscriptChange, currentText }: Voice
       recognition.lang = 'es-ES'
 
       recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript
-        const newText = currentText + transcript + ' '
-        onTranscriptChange(newText)
-        setIsListening(false)
+        let interim = ''
+        let final = ''
+
+        // Process only new results to avoid duplicates on mobile
+        for (let i = lastProcessedIndexRef.current; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript
+          if (event.results[i].isFinal) {
+            final += transcript + ' '
+          } else {
+            interim += transcript
+          }
+        }
+
+        // Update the last processed index to the current length
+        // This prevents reprocessing on auto-restart (mobile issue)
+        lastProcessedIndexRef.current = event.results.length
+
+        setInterimTranscript(interim)
+
+        if (final) {
+          // Append to base text stored in ref
+          baseTextRef.current = baseTextRef.current + final
+          onTranscriptChange(baseTextRef.current)
+        }
       }
 
       recognition.onerror = (event: any) => {
@@ -39,7 +62,20 @@ export default function VoiceRecorder({ onTranscriptChange, currentText }: Voice
       }
 
       recognition.onend = () => {
-        setIsListening(false)
+        if (isListening && !isRestartingRef.current) {
+          // Prevent rapid restart loops on mobile
+          isRestartingRef.current = true
+          setTimeout(() => {
+            if (isListening) {
+              try {
+                recognition.start()
+              } catch (e) {
+                // Already started
+              }
+            }
+            isRestartingRef.current = false
+          }, 300) // Small delay to prevent restart loops
+        }
       }
 
       recognitionRef.current = recognition
@@ -50,20 +86,35 @@ export default function VoiceRecorder({ onTranscriptChange, currentText }: Voice
         recognitionRef.current.stop()
       }
     }
-  }, [currentText, onTranscriptChange])
+  }, [])
 
-  const handleClick = () => {
-    if (isListening) {
-      recognitionRef.current?.stop()
-      setIsListening(false)
-    } else {
-      try {
-        recognitionRef.current?.start()
-        setIsListening(true)
-      } catch (e) {
-        console.error('Failed to start recognition:', e)
+  // Update isListening dependency - removed currentText to prevent restart loops
+  useEffect(() => {
+    if (recognitionRef.current) {
+      if (isListening) {
+        // Save current text when starting to listen (only first time)
+        if (lastProcessedIndexRef.current === 0) {
+          baseTextRef.current = currentText
+        }
+        // Reset the processed index when starting a new session
+        lastProcessedIndexRef.current = 0
+        try {
+          recognitionRef.current.start()
+        } catch (e) {
+          // Already started
+        }
+      } else {
+        isRestartingRef.current = false // Cancel any pending restarts
+        recognitionRef.current.stop()
+        setInterimTranscript('')
+        // Reset index when stopping
+        lastProcessedIndexRef.current = 0
       }
     }
+  }, [isListening]) // Removed currentText from dependencies - it was causing restart loops on mobile
+
+  const toggleListening = () => {
+    setIsListening(!isListening)
   }
 
   if (!isSupported) {
