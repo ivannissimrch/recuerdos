@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import ProtectedPage from "@/components/ProtectedPage";
 import { getCurrentUser, canAddMemories } from "@/lib/auth";
+import { getStoryPreview } from "@/lib/format-story";
 
 type Memory = {
   id: string;
@@ -171,12 +172,23 @@ export default function Home() {
                     </span>
                   </div>
 
-                  {/* Story preview */}
-                  <p className="text-text text-lg mb-4 line-clamp-3">
-                    {memory.story.length > 100
-                      ? memory.story.substring(0, 100) + '...'
-                      : memory.story}
-                  </p>
+                  {/* Story preview - show question if exists */}
+                  {memory.story.startsWith('📝 ') ? (
+                    <div className="mb-4">
+                      <p className="text-primary font-semibold text-base mb-2 line-clamp-2">
+                        📝 {memory.story.split('\n\n')[0].replace('📝 ', '')}
+                      </p>
+                      <p className="text-text text-lg line-clamp-2">
+                        {memory.story.split('\n\n').slice(1).join('\n\n').substring(0, 80)}...
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-text text-lg mb-4 line-clamp-3">
+                      {memory.story.length > 100
+                        ? memory.story.substring(0, 100) + '...'
+                        : memory.story}
+                    </p>
+                  )}
 
                   {/* Author and date */}
                   <div className="flex items-center justify-between text-accent text-base">

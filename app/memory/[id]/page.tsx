@@ -7,6 +7,7 @@ import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import ProtectedPage from "@/components/ProtectedPage";
 import { getCurrentUser } from "@/lib/auth";
+import { formatStory } from "@/lib/format-story";
 
 type Memory = {
   id: string;
@@ -342,9 +343,7 @@ export default function MemoryDetail() {
 
             {/* Story */}
             <div className="p-6 border-b-2 border-border">
-              <p className="text-text text-xl leading-relaxed whitespace-pre-wrap">
-                {memory.story}
-              </p>
+              {formatStory(memory.story)}
             </div>
 
             {/* Author and Date Footer */}
