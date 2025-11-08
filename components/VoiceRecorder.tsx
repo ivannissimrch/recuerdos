@@ -10,14 +10,12 @@ interface VoiceRecorderProps {
 export default function VoiceRecorder({ onTranscriptChange, currentText }: VoiceRecorderProps) {
   const [isListening, setIsListening] = useState(false)
   const [isSupported, setIsSupported] = useState(true)
-  const [interimTranscript, setInterimTranscript] = useState('')
   const recognitionRef = useRef<any>(null)
   const baseTextRef = useRef('')
   const lastProcessedIndexRef = useRef(0)
   const isRestartingRef = useRef(false)
 
   useEffect(() => {
-    // Check if browser supports Web Speech API
     if (typeof window !== 'undefined') {
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
 
@@ -26,11 +24,10 @@ export default function VoiceRecorder({ onTranscriptChange, currentText }: Voice
         return
       }
 
-      // Initialize recognition
       const recognition = new SpeechRecognition()
-      recognition.continuous = true
-      recognition.interimResults = true
-      recognition.lang = 'es-ES' // Spanish language
+      recognition.continuous = false
+      recognition.interimResults = false
+      recognition.lang = 'es-ES'
 
       recognition.onresult = (event: any) => {
         let interim = ''
@@ -61,17 +58,7 @@ export default function VoiceRecorder({ onTranscriptChange, currentText }: Voice
 
       recognition.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error)
-        if (event.error === 'no-speech') {
-          // Restart if no speech detected
-          recognition.stop()
-          setTimeout(() => {
-            if (isListening) {
-              recognition.start()
-            }
-          }, 100)
-        } else {
-          setIsListening(false)
-        }
+        setIsListening(false)
       }
 
       recognition.onend = () => {
@@ -144,7 +131,7 @@ export default function VoiceRecorder({ onTranscriptChange, currentText }: Voice
     <div className="space-y-3">
       <button
         type="button"
-        onClick={toggleListening}
+        onClick={handleClick}
         className={`w-full h-20 rounded-lg font-semibold text-lg transition-all ${
           isListening
             ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse'
@@ -153,17 +140,17 @@ export default function VoiceRecorder({ onTranscriptChange, currentText }: Voice
       >
         {isListening ? (
           <span className="flex items-center justify-center gap-2">
-            🎤 Escuchando... (presiona para parar)
+            🎤 Escuchando... (habla ahora)
           </span>
         ) : (
           <span className="flex items-center justify-center gap-2">
-            🎤 Presiona para hablar
+            🎤 Toca para agregar más
           </span>
         )}
       </button>
 
       <div className="text-sm text-gray-600 text-center">
-        💡 Consejo: Habla claramente y haz pausas. El texto aparecerá abajo.
+        💡 Toca el botón, di una frase, y se agregará al texto. Repite para agregar más.
       </div>
     </div>
   )
