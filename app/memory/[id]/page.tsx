@@ -46,6 +46,8 @@ export default function MemoryDetail() {
   const [newComment, setNewComment] = useState<string>("");
   const [commentAuthor, setCommentAuthor] = useState<string>(user?.name || "");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editCommentText, setEditCommentText] = useState<string>("");
   const [reactAuthorName, setReactAuthorName] = useState<string>(user?.name || "");
   const [showReactInput, setShowReactInput] = useState(false);
   const [selectedReactionType, setSelectedReactionType] = useState<
@@ -109,7 +111,9 @@ export default function MemoryDetail() {
   };
 
   const handleAddReaction = async (reactionType: string) => {
-    if (!reactAuthorName.trim()) {
+    const authorName = user?.name || reactAuthorName.trim();
+
+    if (!authorName) {
       alert("Por favor ingresa tu nombre");
       return;
     }
@@ -117,7 +121,7 @@ export default function MemoryDetail() {
     try {
       const { error } = await supabase.from("reactions").insert({
         memory_id: id,
-        author_name: reactAuthorName.trim(),
+        author_name: authorName,
         reaction_type: reactionType,
       });
 
@@ -134,7 +138,6 @@ export default function MemoryDetail() {
       await fetchReactions();
       setShowReactInput(false);
       setSelectedReactionType(null);
-      setReactAuthorName("");
     } catch (err: any) {
       console.error("Error adding reaction:", err);
       alert("Error al agregar reacción");
@@ -184,6 +187,30 @@ export default function MemoryDetail() {
     } catch (err: any) {
       console.error("Error deleting comment:", err);
       alert("Error al eliminar comentario");
+    }
+  };
+
+  const handleEditComment = async (commentId: string) => {
+    if (!editCommentText.trim()) {
+      alert("El comentario no puede estar vacío");
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("comments")
+        .update({ comment_text: editCommentText.trim() })
+        .eq("id", commentId);
+
+      if (error) throw error;
+
+      // Refresh comments
+      await fetchComments();
+      setEditingCommentId(null);
+      setEditCommentText("");
+    } catch (err: any) {
+      console.error("Error editing comment:", err);
+      alert("Error al editar comentario");
     }
   };
 
@@ -300,9 +327,9 @@ export default function MemoryDetail() {
 
           {/* Main Memory Card - Photo + Story + Author unified */}
           <div className="bg-white border-2 border-border rounded-xl overflow-hidden shadow-lg mb-6">
-            {/* Photo (if exists) */}
+            {/* Photo (if exists) - BIG for seniors! */}
             {memory.photo_url && (
-              <div className="relative w-full aspect-[4/3] border-b-2 border-border">
+              <div className="relative w-full min-h-[400px] md:min-h-[600px] border-b-2 border-border bg-secondary">
                 <Image
                   src={memory.photo_url}
                   alt={memory.story.substring(0, 50)}
@@ -351,16 +378,12 @@ export default function MemoryDetail() {
                 Reacciona con:
               </h3>
 
-            {/* Pet Reaction Buttons */}
-            {!showReactInput && (
+            {/* Pet Reaction Buttons - ONE CLICK! */}
               <div>
               <div className="grid grid-cols-3 gap-4 mb-4">
                 {/* Rucho - Chido */}
                 <button
-                  onClick={() => {
-                    setSelectedReactionType("rucho");
-                    setShowReactInput(true);
-                  }}
+                  onClick={() => handleAddReaction("rucho")}
                   className="flex flex-col items-center gap-3 p-6 bg-secondary border-2 border-border rounded-xl hover:border-primary hover:shadow-lg transition-all hover:scale-105"
                 >
                   <Image
@@ -383,10 +406,7 @@ export default function MemoryDetail() {
 
                 {/* Leo - Feliz */}
                 <button
-                  onClick={() => {
-                    setSelectedReactionType("leo");
-                    setShowReactInput(true);
-                  }}
+                  onClick={() => handleAddReaction("leo")}
                   className="flex flex-col items-center gap-3 p-6 bg-secondary border-2 border-border rounded-xl hover:border-primary hover:shadow-lg transition-all hover:scale-105"
                 >
                   <Image
@@ -406,10 +426,7 @@ export default function MemoryDetail() {
 
                 {/* Lombriz - El Campion */}
                 <button
-                  onClick={() => {
-                    setSelectedReactionType("lombriz");
-                    setShowReactInput(true);
-                  }}
+                  onClick={() => handleAddReaction("lombriz")}
                   className="flex flex-col items-center gap-3 p-6 bg-secondary border-2 border-border rounded-xl hover:border-primary hover:shadow-lg transition-all hover:scale-105"
                 >
                   <Image
@@ -430,10 +447,7 @@ export default function MemoryDetail() {
 
                 {/* Gato - Gato Ok */}
                 <button
-                  onClick={() => {
-                    setSelectedReactionType("gato");
-                    setShowReactInput(true);
-                  }}
+                  onClick={() => handleAddReaction("gato")}
                   className="flex flex-col items-center gap-3 p-6 bg-secondary border-2 border-border rounded-xl hover:border-primary hover:shadow-lg transition-all hover:scale-105"
                 >
                   <Image
@@ -453,10 +467,7 @@ export default function MemoryDetail() {
 
                 {/* Heart - Classic */}
                 <button
-                  onClick={() => {
-                    setSelectedReactionType("heart");
-                    setShowReactInput(true);
-                  }}
+                  onClick={() => handleAddReaction("heart")}
                   className="flex flex-col items-center gap-3 p-6 bg-secondary border-2 border-border rounded-xl hover:border-primary hover:shadow-lg transition-all hover:scale-105"
                 >
                   <span className="text-7xl">❤️</span>
@@ -476,7 +487,6 @@ export default function MemoryDetail() {
                 </p>
               )}
               </div>
-            )}
 
             {/* Who reacted - Grouped by reaction type */}
             {reactions.length > 0 && (
@@ -628,90 +638,6 @@ export default function MemoryDetail() {
               </div>
             )}
 
-            {/* React input - Name entry after selecting pet */}
-            {showReactInput && selectedReactionType && (
-              <div className="border-t-2 border-border pt-6">
-                <div className="flex items-center gap-3 mb-4">
-                  {selectedReactionType === "heart" ? (
-                    <span className="text-5xl">❤️</span>
-                  ) : (
-                    <Image
-                      src={
-                        selectedReactionType === "rucho"
-                          ? "/CoolRucho.png"
-                          : selectedReactionType === "leo"
-                          ? "/happyLeo.png"
-                          : selectedReactionType === "lombriz"
-                          ? "/felizLombriz.png"
-                          : "/gatoOk.png"
-                      }
-                      alt={
-                        selectedReactionType === "rucho"
-                          ? "Chido"
-                          : selectedReactionType === "leo"
-                          ? "Feliz"
-                          : selectedReactionType === "lombriz"
-                          ? "El Campion"
-                          : "Gato Ok"
-                      }
-                      width={50}
-                      height={50}
-                      className="rounded-full"
-                    />
-                  )}
-                  <h4 className="text-text text-xl font-semibold">
-                    Reaccionar con{" "}
-                    {selectedReactionType === "rucho"
-                      ? "Chido 😎"
-                      : selectedReactionType === "leo"
-                      ? "Feliz 😊"
-                      : selectedReactionType === "lombriz"
-                      ? "El Campion 🏆"
-                      : selectedReactionType === "gato"
-                      ? "Gato Ok 👌"
-                      : "Me Gusta ❤️"}
-                  </h4>
-                </div>
-
-                <input
-                  type="text"
-                  value={reactAuthorName}
-                  onChange={(e) => setReactAuthorName(e.target.value)}
-                  placeholder="Tu nombre"
-                  className="w-full p-4 border-2 border-border rounded-xl focus:border-primary focus:outline-none text-text text-lg mb-4"
-                  autoFocus
-                  onKeyPress={(e) => {
-                    if (e.key === "Enter" && reactAuthorName.trim()) {
-                      handleAddReaction(selectedReactionType);
-                    }
-                  }}
-                />
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      setShowReactInput(false);
-                      setSelectedReactionType(null);
-                      setReactAuthorName("");
-                    }}
-                    className="flex-1 py-3 px-6 rounded-xl text-lg font-semibold bg-gray-300 text-gray-700 hover:bg-gray-400 transition-all"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={() => handleAddReaction(selectedReactionType)}
-                    disabled={!reactAuthorName.trim()}
-                    className={`flex-1 py-3 px-6 rounded-xl text-lg font-semibold transition-all ${
-                      !reactAuthorName.trim()
-                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                        : "bg-primary text-white hover:bg-accent"
-                    }`}
-                  >
-                    🐾 Enviar
-                  </button>
-                </div>
-              </div>
-            )}
             </div>
           </div>
 
@@ -734,26 +660,74 @@ export default function MemoryDetail() {
                     key={comment.id}
                     className="bg-secondary border border-border rounded-lg p-4"
                   >
-                    <div className="flex items-start justify-between mb-2">
-                      <p className="text-text font-semibold text-lg">
-                        👤 {comment.author_name}
-                      </p>
-                      <div className="flex items-center gap-3">
-                        <p className="text-accent text-sm">
-                          {getRelativeTime(comment.created_at)}
-                        </p>
-                        <button
-                          onClick={() => handleDeleteComment(comment.id)}
-                          className="text-red-500 hover:text-red-700 text-2xl transition-all hover:scale-110"
-                          title="Eliminar comentario"
-                        >
-                          🗑️
-                        </button>
+                    {editingCommentId === comment.id ? (
+                      // Edit Mode
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-text font-semibold text-lg">
+                            ✏️ Editando comentario
+                          </p>
+                        </div>
+                        <textarea
+                          value={editCommentText}
+                          onChange={(e) => setEditCommentText(e.target.value)}
+                          className="w-full p-3 border-2 border-border rounded-lg text-text text-lg resize-none mb-3"
+                          rows={3}
+                          autoFocus
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleEditComment(comment.id)}
+                            className="bg-primary text-white px-4 py-2 rounded-lg font-semibold hover:bg-accent transition-all"
+                          >
+                            ✓ Guardar
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingCommentId(null);
+                              setEditCommentText("");
+                            }}
+                            className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg font-semibold hover:bg-gray-400 transition-all"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                    <p className="text-text text-lg whitespace-pre-wrap">
-                      {comment.comment_text}
-                    </p>
+                    ) : (
+                      // View Mode
+                      <div>
+                        <div className="flex items-start justify-between mb-2">
+                          <p className="text-text font-semibold text-lg">
+                            👤 {comment.author_name}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-accent text-sm">
+                              {getRelativeTime(comment.created_at)}
+                            </p>
+                            <button
+                              onClick={() => {
+                                setEditingCommentId(comment.id);
+                                setEditCommentText(comment.comment_text);
+                              }}
+                              className="bg-blue-100 text-blue-700 px-3 py-2 rounded-lg text-base font-semibold hover:bg-blue-200 transition-all flex items-center gap-1"
+                              aria-label="Editar comentario"
+                            >
+                              ✏️ <span className="hidden sm:inline">Editar</span>
+                            </button>
+                            <button
+                              onClick={() => handleDeleteComment(comment.id)}
+                              className="bg-red-100 text-red-700 px-3 py-2 rounded-lg text-base font-semibold hover:bg-red-200 transition-all flex items-center gap-1"
+                              aria-label="Eliminar comentario"
+                            >
+                              🗑️ <span className="hidden sm:inline">Eliminar</span>
+                            </button>
+                          </div>
+                        </div>
+                        <p className="text-text text-lg whitespace-pre-wrap">
+                          {comment.comment_text}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ))
               )}
