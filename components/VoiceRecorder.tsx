@@ -101,12 +101,14 @@ export default function VoiceRecorder({ onTranscriptChange, currentText }: Voice
     }
   }, [])
 
-  // Update isListening dependency
+  // Update isListening dependency - removed currentText to prevent restart loops
   useEffect(() => {
     if (recognitionRef.current) {
       if (isListening) {
-        // Save current text when starting to listen
-        baseTextRef.current = currentText
+        // Save current text when starting to listen (only first time)
+        if (lastProcessedIndexRef.current === 0) {
+          baseTextRef.current = currentText
+        }
         // Reset the processed index when starting a new session
         lastProcessedIndexRef.current = 0
         try {
@@ -122,7 +124,7 @@ export default function VoiceRecorder({ onTranscriptChange, currentText }: Voice
         lastProcessedIndexRef.current = 0
       }
     }
-  }, [isListening, currentText])
+  }, [isListening]) // Removed currentText from dependencies - it was causing restart loops on mobile
 
   const toggleListening = () => {
     setIsListening(!isListening)
