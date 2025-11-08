@@ -14,6 +14,7 @@ export default function VoiceRecorder({ onTranscriptChange, currentText }: Voice
   const recognitionRef = useRef<any>(null)
   const baseTextRef = useRef('')
   const lastProcessedIndexRef = useRef(0)
+  const isRestartingRef = useRef(false)
 
   useEffect(() => {
     // Check if browser supports Web Speech API
@@ -40,12 +41,14 @@ export default function VoiceRecorder({ onTranscriptChange, currentText }: Voice
           const transcript = event.results[i][0].transcript
           if (event.results[i].isFinal) {
             final += transcript + ' '
-            // Update the last processed index when we get a final result
-            lastProcessedIndexRef.current = i + 1
           } else {
             interim += transcript
           }
         }
+
+        // Update the last processed index to the current length
+        // This prevents reprocessing on auto-restart (mobile issue)
+        lastProcessedIndexRef.current = event.results.length
 
         setInterimTranscript(interim)
 
@@ -72,9 +75,19 @@ export default function VoiceRecorder({ onTranscriptChange, currentText }: Voice
       }
 
       recognition.onend = () => {
-        if (isListening) {
-          // Restart recognition if it stops but we're still supposed to be listening
-          recognition.start()
+        if (isListening && !isRestartingRef.current) {
+          // Prevent rapid restart loops on mobile
+          isRestartingRef.current = true
+          setTimeout(() => {
+            if (isListening) {
+              try {
+                recognition.start()
+              } catch (e) {
+                // Already started
+              }
+            }
+            isRestartingRef.current = false
+          }, 300) // Small delay to prevent restart loops
         }
       }
 
@@ -102,6 +115,7 @@ export default function VoiceRecorder({ onTranscriptChange, currentText }: Voice
           // Already started
         }
       } else {
+        isRestartingRef.current = false // Cancel any pending restarts
         recognitionRef.current.stop()
         setInterimTranscript('')
         // Reset index when stopping
