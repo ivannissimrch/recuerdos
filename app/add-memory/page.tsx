@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 import ProtectedPage from "@/components/ProtectedPage";
 import { getCurrentUser } from "@/lib/auth";
 import { DEEP_QUESTIONS, type DeepQuestion } from "@/lib/deep-questions";
+import VoiceRecorder from "@/components/VoiceRecorder";
 
 type Category = "childhood" | "family" | "pets" | "work" | "other";
 type Mode = "choose" | "guided" | "freeform";
@@ -55,7 +56,7 @@ export default function AddMemory() {
   const handleQuestionSelect = (question: DeepQuestion) => {
     setSelectedQuestion(question);
     setSelectedCategory(question.category);
-    setStory(question.prompt + "\n\n");
+    setStory(""); // Start with empty story - question will be added on submit
     setMode("freeform"); // Go to the form
   };
 
@@ -332,16 +333,35 @@ export default function AddMemory() {
               </div>
             )}
 
-            <h2 className="text-text mb-6">Escribe tu Historia:</h2>
+            <h2 className="text-text mb-6">Cuenta tu Historia:</h2>
 
-            <textarea
-              value={story}
-              onChange={(e) => setStory(e.target.value)}
-              placeholder={selectedQuestion ? "" : placeholders[selectedCategory]}
-              rows={4}
-              className="w-full p-4 border-2 border-border rounded-xl focus:border-primary focus:outline-none text-text text-lg resize-none"
-              maxLength={1000}
-            />
+            {/* Voice Recorder Option */}
+            <div className="mb-6">
+              <div className="bg-secondary rounded-xl p-6 border-2 border-border">
+                <h3 className="text-text text-xl mb-4 flex items-center gap-2">
+                  🎤 Opción 1: Habla tu Historia
+                </h3>
+                <VoiceRecorder
+                  onTranscriptChange={setStory}
+                  currentText={story}
+                />
+              </div>
+            </div>
+
+            {/* Text Input Option */}
+            <div className="mb-6">
+              <h3 className="text-text text-xl mb-4 flex items-center gap-2">
+                ✍️ Opción 2: Escribe tu Historia
+              </h3>
+              <textarea
+                value={story}
+                onChange={(e) => setStory(e.target.value)}
+                placeholder={story.trim() ? "" : placeholders[selectedCategory]}
+                rows={8}
+                className="w-full p-4 border-2 border-border rounded-xl focus:border-primary focus:outline-none text-text text-lg resize-none"
+                maxLength={1000}
+              />
+            </div>
 
             {/* Character count */}
             <div className="text-right mt-2 text-accent">
