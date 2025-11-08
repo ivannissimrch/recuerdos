@@ -13,6 +13,7 @@ export default function VoiceRecorder({ onTranscriptChange, currentText }: Voice
   const [interimTranscript, setInterimTranscript] = useState('')
   const recognitionRef = useRef<any>(null)
   const baseTextRef = useRef('')
+  const lastProcessedIndexRef = useRef(0)
 
   useEffect(() => {
     // Check if browser supports Web Speech API
@@ -34,10 +35,13 @@ export default function VoiceRecorder({ onTranscriptChange, currentText }: Voice
         let interim = ''
         let final = ''
 
-        for (let i = event.resultIndex; i < event.results.length; i++) {
+        // Process only new results to avoid duplicates on mobile
+        for (let i = lastProcessedIndexRef.current; i < event.results.length; i++) {
           const transcript = event.results[i][0].transcript
           if (event.results[i].isFinal) {
             final += transcript + ' '
+            // Update the last processed index when we get a final result
+            lastProcessedIndexRef.current = i + 1
           } else {
             interim += transcript
           }
@@ -90,6 +94,8 @@ export default function VoiceRecorder({ onTranscriptChange, currentText }: Voice
       if (isListening) {
         // Save current text when starting to listen
         baseTextRef.current = currentText
+        // Reset the processed index when starting a new session
+        lastProcessedIndexRef.current = 0
         try {
           recognitionRef.current.start()
         } catch (e) {
@@ -98,6 +104,8 @@ export default function VoiceRecorder({ onTranscriptChange, currentText }: Voice
       } else {
         recognitionRef.current.stop()
         setInterimTranscript('')
+        // Reset index when stopping
+        lastProcessedIndexRef.current = 0
       }
     }
   }, [isListening, currentText])
