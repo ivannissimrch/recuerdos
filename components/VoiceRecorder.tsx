@@ -10,14 +10,9 @@ interface VoiceRecorderProps {
 export default function VoiceRecorder({ onTranscriptChange, currentText }: VoiceRecorderProps) {
   const [isListening, setIsListening] = useState(false)
   const [isSupported, setIsSupported] = useState(true)
-  const [interimTranscript, setInterimTranscript] = useState('')
   const recognitionRef = useRef<any>(null)
-  const baseTextRef = useRef('')
-  const lastProcessedIndexRef = useRef(0)
-  const isRestartingRef = useRef(false)
 
   useEffect(() => {
-    // Check if browser supports Web Speech API
     if (typeof window !== 'undefined') {
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
 
@@ -26,69 +21,25 @@ export default function VoiceRecorder({ onTranscriptChange, currentText }: Voice
         return
       }
 
-      // Initialize recognition
       const recognition = new SpeechRecognition()
-      recognition.continuous = true
-      recognition.interimResults = true
-      recognition.lang = 'es-ES' // Spanish language
+      recognition.continuous = false
+      recognition.interimResults = false
+      recognition.lang = 'es-ES'
 
       recognition.onresult = (event: any) => {
-        let interim = ''
-        let final = ''
-
-        // Process only new results to avoid duplicates on mobile
-        for (let i = lastProcessedIndexRef.current; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript
-          if (event.results[i].isFinal) {
-            final += transcript + ' '
-          } else {
-            interim += transcript
-          }
-        }
-
-        // Update the last processed index to the current length
-        // This prevents reprocessing on auto-restart (mobile issue)
-        lastProcessedIndexRef.current = event.results.length
-
-        setInterimTranscript(interim)
-
-        if (final) {
-          // Append to base text stored in ref
-          baseTextRef.current = baseTextRef.current + final
-          onTranscriptChange(baseTextRef.current)
-        }
+        const transcript = event.results[0][0].transcript
+        const newText = currentText + transcript + ' '
+        onTranscriptChange(newText)
+        setIsListening(false)
       }
 
       recognition.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error)
-        if (event.error === 'no-speech') {
-          // Restart if no speech detected
-          recognition.stop()
-          setTimeout(() => {
-            if (isListening) {
-              recognition.start()
-            }
-          }, 100)
-        } else {
-          setIsListening(false)
-        }
+        setIsListening(false)
       }
 
       recognition.onend = () => {
-        if (isListening && !isRestartingRef.current) {
-          // Prevent rapid restart loops on mobile
-          isRestartingRef.current = true
-          setTimeout(() => {
-            if (isListening) {
-              try {
-                recognition.start()
-              } catch (e) {
-                // Already started
-              }
-            }
-            isRestartingRef.current = false
-          }, 300) // Small delay to prevent restart loops
-        }
+        setIsListening(false)
       }
 
       recognitionRef.current = recognition
@@ -99,33 +50,20 @@ export default function VoiceRecorder({ onTranscriptChange, currentText }: Voice
         recognitionRef.current.stop()
       }
     }
-  }, [])
+  }, [currentText, onTranscriptChange])
 
-  // Update isListening dependency
-  useEffect(() => {
-    if (recognitionRef.current) {
-      if (isListening) {
-        // Save current text when starting to listen
-        baseTextRef.current = currentText
-        // Reset the processed index when starting a new session
-        lastProcessedIndexRef.current = 0
-        try {
-          recognitionRef.current.start()
-        } catch (e) {
-          // Already started
-        }
-      } else {
-        isRestartingRef.current = false // Cancel any pending restarts
-        recognitionRef.current.stop()
-        setInterimTranscript('')
-        // Reset index when stopping
-        lastProcessedIndexRef.current = 0
+  const handleClick = () => {
+    if (isListening) {
+      recognitionRef.current?.stop()
+      setIsListening(false)
+    } else {
+      try {
+        recognitionRef.current?.start()
+        setIsListening(true)
+      } catch (e) {
+        console.error('Failed to start recognition:', e)
       }
     }
-  }, [isListening, currentText])
-
-  const toggleListening = () => {
-    setIsListening(!isListening)
   }
 
   if (!isSupported) {
@@ -142,7 +80,7 @@ export default function VoiceRecorder({ onTranscriptChange, currentText }: Voice
     <div className="space-y-3">
       <button
         type="button"
-        onClick={toggleListening}
+        onClick={handleClick}
         className={`w-full h-20 rounded-lg font-semibold text-lg transition-all ${
           isListening
             ? 'bg-red-500 hover:bg-red-600 text-white animate-pulse'
@@ -151,17 +89,17 @@ export default function VoiceRecorder({ onTranscriptChange, currentText }: Voice
       >
         {isListening ? (
           <span className="flex items-center justify-center gap-2">
-            🎤 Escuchando... (presiona para parar)
+            🎤 Escuchando... (habla ahora)
           </span>
         ) : (
           <span className="flex items-center justify-center gap-2">
-            🎤 Presiona para hablar
+            🎤 Toca para agregar más
           </span>
         )}
       </button>
 
       <div className="text-sm text-gray-600 text-center">
-        💡 Consejo: Habla claramente y haz pausas. El texto aparecerá abajo.
+        💡 Toca el botón, di una frase, y se agregará al texto. Repite para agregar más.
       </div>
     </div>
   )
