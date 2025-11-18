@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 import ProtectedPage from "@/components/ProtectedPage";
 import { getCurrentUser } from "@/lib/auth";
 import { formatStory } from "@/lib/format-story";
+import GifPicker from "@/components/GifPicker";
 
 type Memory = {
   id: string;
@@ -23,6 +24,7 @@ type Comment = {
   memory_id: string;
   author_name: string;
   comment_text: string;
+  gif_url?: string;
   created_at: string;
 };
 
@@ -54,6 +56,8 @@ export default function MemoryDetail() {
   const [selectedReactionType, setSelectedReactionType] = useState<
     string | null
   >(null);
+  const [showGifPicker, setShowGifPicker] = useState(false);
+  const [selectedGifUrl, setSelectedGifUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -145,23 +149,48 @@ export default function MemoryDetail() {
     }
   };
 
+  const handleSelectGif = (gifUrl: string) => {
+    setSelectedGifUrl(gifUrl);
+    setShowGifPicker(false);
+  };
+
+  const handleClearGif = () => {
+    setSelectedGifUrl(null);
+  };
+
   const handleAddComment = async () => {
-    if (!newComment.trim() || !commentAuthor.trim()) return;
+    if ((!newComment.trim() && !selectedGifUrl) || !commentAuthor.trim()) {
+      console.log('Validation failed:', {
+        hasText: !!newComment.trim(),
+        hasGif: !!selectedGifUrl,
+        hasAuthor: !!commentAuthor.trim()
+      });
+      return;
+    }
 
     setIsSubmittingComment(true);
 
-    try {
-      const { error } = await supabase.from("comments").insert({
-        memory_id: id,
-        author_name: commentAuthor.trim(),
-        comment_text: newComment.trim(),
-      });
+    const commentData = {
+      memory_id: id,
+      author_name: commentAuthor.trim(),
+      comment_text: newComment.trim() || null,
+      gif_url: selectedGifUrl || null,
+    };
 
-      if (error) throw error;
+    console.log('Submitting comment:', commentData);
+
+    try {
+      const { error } = await supabase.from("comments").insert(commentData);
+
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
 
       // Refresh comments
       await fetchComments();
       setNewComment("");
+      setSelectedGifUrl(null);
     } catch (err: any) {
       console.error("Error adding comment:", err);
       alert("Error al agregar comentario");
@@ -725,6 +754,15 @@ export default function MemoryDetail() {
                         <p className="text-text text-lg whitespace-pre-wrap">
                           {comment.comment_text}
                         </p>
+                        {comment.gif_url && (
+                          <div className="mt-3">
+                            <img
+                              src={comment.gif_url}
+                              alt="GIF"
+                              className="max-w-full rounded-lg border-2 border-border"
+                            />
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -749,21 +787,49 @@ export default function MemoryDetail() {
               <textarea
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Escribe tu comentario..."
+                placeholder={selectedGifUrl ? "Escribe algo (opcional)..." : "Escribe tu comentario o agrega un GIF..."}
                 rows={4}
                 className="w-full p-4 border-2 border-border rounded-xl focus:border-primary focus:outline-none text-text text-lg resize-none mb-4"
               />
+
+              {/* GIF Preview */}
+              {selectedGifUrl && (
+                <div className="mb-4 relative inline-block">
+                  <img
+                    src={selectedGifUrl}
+                    alt="Selected GIF"
+                    className="max-w-xs rounded-lg border-2 border-primary"
+                  />
+                  <button
+                    onClick={handleClearGif}
+                    className="absolute top-2 right-2 bg-red-500 text-white w-10 h-10 rounded-full hover:bg-red-600 font-bold text-xl"
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+
+              {/* GIF Button */}
+              <div className="mb-4">
+                <button
+                  onClick={() => setShowGifPicker(true)}
+                  type="button"
+                  className="bg-purple-500 text-white px-6 py-3 rounded-xl hover:bg-purple-600 transition-all text-lg font-semibold flex items-center gap-2"
+                >
+                  🎬 Agregar GIF
+                </button>
+              </div>
 
               <button
                 onClick={handleAddComment}
                 disabled={
                   isSubmittingComment ||
-                  !newComment.trim() ||
+                  (!newComment.trim() && !selectedGifUrl) ||
                   !commentAuthor.trim()
                 }
                 className={`w-full py-4 px-8 rounded-xl text-xl font-semibold transition-all ${
                   isSubmittingComment ||
-                  !newComment.trim() ||
+                  (!newComment.trim() && !selectedGifUrl) ||
                   !commentAuthor.trim()
                     ? "bg-gray-300 text-gray-500 cursor-not-allowed"
                     : "bg-primary text-white hover:bg-accent hover:scale-105 active:scale-95"
@@ -774,6 +840,14 @@ export default function MemoryDetail() {
             </div>
           </div>
         </main>
+
+        {/* GIF Picker Modal */}
+        {showGifPicker && (
+          <GifPicker
+            onSelectGif={handleSelectGif}
+            onClose={() => setShowGifPicker(false)}
+          />
+        )}
       </div>
     </ProtectedPage>
   );
